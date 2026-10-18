@@ -16,7 +16,7 @@ Quy trình: Cư dân báo → Quản lý giao việc → Đang xử lý → Hoà
 
 | Hạng mục | Lựa chọn | Trạng thái |
 |---|---|---|
-| Ngôn ngữ | Java&Kotlin | CONFIRMED |
+| Ngôn ngữ | Java | CONFIRMED |
 | Giao diện | XML Layout | CONFIRMED |
 | Backend | Firebase Authentication + Cloud Firestore | PROPOSED |
 | Min SDK | API 24 | CONFIRMED |
