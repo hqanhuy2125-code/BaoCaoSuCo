@@ -16,7 +16,7 @@ Quy trình: Cư dân báo → Quản lý giao việc → Đang xử lý → Hoà
 
 | Hạng mục | Lựa chọn | Trạng thái |
 |---|---|---|
-| Ngôn ngữ | Java (cô dạy Java) | CONFIRMED |
+| Ngôn ngữ | Java&Kotlin | CONFIRMED |
 | Giao diện | XML Layout | CONFIRMED |
 | Backend | Firebase Authentication + Cloud Firestore | PROPOSED |
 | Min SDK | API 24 | CONFIRMED |
@@ -43,7 +43,7 @@ Quy trình: Cư dân báo → Quản lý giao việc → Đang xử lý → Hoà
 
 | Người | Phần việc | Tên |
 |---|---|---|
-| 1 (nhóm trưởng) | Khung app, đăng nhập, ghép code | [điền tên] |
-| 2 | Phía cư dân | [điền tên] |
-| 3 | Phía quản lý | [điền tên] |
-| 4 | Lõi trạng thái và kiểm thử | [điền tên] |
+| 1 (nhóm trưởng) | Khung app, đăng nhập, ghép code | Hà Quang Huy |
+| 2 | Phía cư dân | Trần Quốc Huy |
+| 3 | Phía quản lý | Trần Huỳnh Hồng Phúc |
+| 4 | Lõi trạng thái và kiểm thử | Nguyễn Đức Hưng |
