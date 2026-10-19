@@ -15,3 +15,25 @@
 local.properties
 
 .idea/
+
+# Firebase — chứa cấu hình app (SHA, project ID)
+# google-services.json KHÔNG phải private key nhưng nên giữ private
+# để tránh lộ project ID và tránh bị abuse quota
+google-services.json
+google-services-debug.json
+
+# Keystore / Signing — TUYỆT ĐỐI không commit
+*.jks
+*.keystore
+*.p12
+keystore.properties
+release-keystore.properties
+
+# Service account credentials (Firebase Admin SDK, CI/CD)
+*-service-account.json
+*serviceAccount*.json
+
+# Biến môi trường và secrets
+.env
+*.env
+secrets/
