@@ -2,6 +2,7 @@ package com.example.baocaosuco.auth;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Patterns;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -52,6 +53,11 @@ public class RegisterActivity extends AppCompatActivity {
             etEmail.requestFocus();
             return;
         }
+        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            etEmail.setError(getString(R.string.auth_err_email_invalid));
+            etEmail.requestFocus();
+            return;
+        }
         if (password.length() < 6) {
             etPassword.setError(getString(R.string.auth_err_password_short));
             etPassword.requestFocus();
@@ -65,6 +71,7 @@ public class RegisterActivity extends AppCompatActivity {
             public void onSuccess(User user) {
                 if (isFinishing() || isDestroyed()) return;
                 setLoading(false);
+                Toast.makeText(RegisterActivity.this, getString(R.string.auth_register_success), Toast.LENGTH_SHORT).show();
                 goToMain();
             }
 

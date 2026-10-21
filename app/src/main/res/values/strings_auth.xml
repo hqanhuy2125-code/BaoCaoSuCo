@@ -18,6 +18,7 @@
 
     <!-- Loi xac thuc dau vao -->
     <string name="auth_err_email_empty">Vui lòng nhập email</string>
+    <string name="auth_err_email_invalid">Email không đúng định dạng</string>
     <string name="auth_err_password_short">Mật khẩu phải có ít nhất 6 ký tự</string>
     <string name="auth_err_name_empty">Vui lòng nhập họ và tên</string>
 
@@ -27,10 +28,11 @@
 
     <!-- Thong bao chung -->
     <string name="auth_err_unknown_role">Vai trò không hợp lệ, đã đăng xuất.</string>
+    <string name="auth_register_success">Đăng ký thành công</string>
     <string name="auth_loading">Đang xử lý…</string>
 
     <!-- Goi y tai khoan demo -->
-    <string name="auth_demo_hint">Cư dân: cudan@bcsc.vn / 123456&#10;Quản lý: quanly@bcsc.vn / 123456</string>
+    <string name="auth_demo_hint">Cư dân: cudan@bcsc.vn / 123456\nQuản lý: quanly@bcsc.vn / 123456</string>
 
     <!-- Man hinh cu dan -->
     <string name="resident_main_title">Cư dân</string>

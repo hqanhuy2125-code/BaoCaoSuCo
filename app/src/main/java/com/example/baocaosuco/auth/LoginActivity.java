@@ -2,6 +2,7 @@ package com.example.baocaosuco.auth;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Patterns;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -43,6 +44,11 @@ public class LoginActivity extends AppCompatActivity {
         // Kiem tra o trong
         if (email.isEmpty()) {
             etEmail.setError(getString(R.string.auth_err_email_empty));
+            etEmail.requestFocus();
+            return;
+        }
+        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            etEmail.setError(getString(R.string.auth_err_email_invalid));
             etEmail.requestFocus();
             return;
         }

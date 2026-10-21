@@ -31,14 +31,41 @@ class MockAuthRepository implements AuthRepository {
         seedIfEmpty();
     }
 
-    // Tao 2 tai khoan demo neu chua co
+    /**
+     * Dam bao 2 tai khoan mau (cudan@bcsc.vn va quanly@bcsc.vn) luon ton tai.
+     * Neu may da co du lieu cu (vi du seed tu ban cu) hoac da co tai khoan tu dang ky,
+     * chi bo sung tai khoan mau neu con thieu ma khong xoa hay ghi de tai khoan da co.
+     */
     private void seedIfEmpty() {
-        if (prefsAccounts.contains(KEY_ACCOUNTS)) return;
         try {
-            JSONArray arr = new JSONArray();
-            arr.put(buildAccount("Cư dân",  "cudan@bcsc.vn", "123456", User.ROLE_RESIDENT));
-            arr.put(buildAccount("Quản lý", "quanly@bcsc.vn",  "123456", User.ROLE_MANAGER));
-            prefsAccounts.edit().putString(KEY_ACCOUNTS, arr.toString()).apply();
+            JSONArray arr = loadAccounts();
+            boolean hasResident = false;
+            boolean hasManager = false;
+
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject o = arr.getJSONObject(i);
+                String email = o.optString("email");
+                if ("cudan@bcsc.vn".equalsIgnoreCase(email)) {
+                    hasResident = true;
+                }
+                if ("quanly@bcsc.vn".equalsIgnoreCase(email)) {
+                    hasManager = true;
+                }
+            }
+
+            boolean changed = false;
+            if (!hasResident) {
+                arr.put(buildAccount("Cư dân", "cudan@bcsc.vn", "123456", User.ROLE_RESIDENT));
+                changed = true;
+            }
+            if (!hasManager) {
+                arr.put(buildAccount("Quản lý", "quanly@bcsc.vn", "123456", User.ROLE_MANAGER));
+                changed = true;
+            }
+
+            if (changed || !prefsAccounts.contains(KEY_ACCOUNTS)) {
+                saveAccounts(arr);
+            }
         } catch (Exception ignored) {}
     }
 
@@ -66,13 +93,13 @@ class MockAuthRepository implements AuthRepository {
         prefsAccounts.edit().putString(KEY_ACCOUNTS, arr.toString()).apply();
     }
 
-    // Tim tai khoan theo email (da chuan hoa)
+    // Tim tai khoan theo email (da chuan hoa: trim va lowercase)
     private JSONObject findByEmail(String normalizedEmail) {
         try {
             JSONArray arr = loadAccounts();
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject o = arr.getJSONObject(i);
-                if (normalizedEmail.equals(o.optString("email"))) return o;
+                if (normalizedEmail.equalsIgnoreCase(o.optString("email").trim())) return o;
             }
         } catch (Exception ignored) {}
         return null;
@@ -131,7 +158,7 @@ class MockAuthRepository implements AuthRepository {
             callback.onSuccess(null);
             return;
         }
-        JSONObject account = findByEmail(sessionEmail);
+        JSONObject account = findByEmail(sessionEmail.trim().toLowerCase());
         if (account == null) {
             // Phien con nhung tai khoan bi xoa (khong xay ra trong demo)
             callback.onSuccess(null);
