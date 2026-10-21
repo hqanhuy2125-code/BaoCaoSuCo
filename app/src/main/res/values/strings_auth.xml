@@ -29,14 +29,14 @@
     <string name="auth_err_unknown_role">Vai trò không hợp lệ, đã đăng xuất.</string>
     <string name="auth_loading">Đang xử lý…</string>
 
-    <!-- Goi y tai khoan demo (chi hien tren man Dang nhap) -->
-    <string name="auth_demo_hint">Demo: resident@demo.com / 123456  |  manager@demo.com / 123456</string>
+    <!-- Goi y tai khoan demo -->
+    <string name="auth_demo_hint">Cư dân: cudan@bcsc.vn / 123456&#10;Quản lý: quanly@bcsc.vn / 123456</string>
 
     <!-- Man hinh cu dan -->
-    <string name="resident_main_title">Màn hình Cư dân</string>
+    <string name="resident_main_title">Cư dân</string>
     <string name="resident_main_greeting">Xin chào, %1$s</string>
 
     <!-- Man hinh quan ly -->
-    <string name="manager_main_title">Màn hình Quản lý</string>
+    <string name="manager_main_title">Quản lý</string>
     <string name="manager_main_greeting">Xin chào, %1$s</string>
 </resources>

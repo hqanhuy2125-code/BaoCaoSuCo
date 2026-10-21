@@ -36,8 +36,8 @@ class MockAuthRepository implements AuthRepository {
         if (prefsAccounts.contains(KEY_ACCOUNTS)) return;
         try {
             JSONArray arr = new JSONArray();
-            arr.put(buildAccount("Cư dân Demo",  "resident@demo.com", "123456", User.ROLE_RESIDENT));
-            arr.put(buildAccount("Quản lý Demo", "manager@demo.com",  "123456", User.ROLE_MANAGER));
+            arr.put(buildAccount("Cư dân",  "cudan@bcsc.vn", "123456", User.ROLE_RESIDENT));
+            arr.put(buildAccount("Quản lý", "quanly@bcsc.vn",  "123456", User.ROLE_MANAGER));
             prefsAccounts.edit().putString(KEY_ACCOUNTS, arr.toString()).apply();
         } catch (Exception ignored) {}
     }
