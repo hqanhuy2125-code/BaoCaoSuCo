@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="32dp"
+        android:gravity="center_horizontal">
+
+        <TextView
+            android:id="@+id/auth_register_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="48dp"
+            android:layout_marginBottom="28dp"
+            android:text="@string/auth_title_register"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/auth_register_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:hint="@string/auth_hint_display_name"
+            android:inputType="textPersonName"
+            android:autofillHints="name"
+            android:padding="14dp" />
+
+        <EditText
+            android:id="@+id/auth_register_email"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:hint="@string/auth_hint_email"
+            android:inputType="textEmailAddress"
+            android:autofillHints="emailAddress"
+            android:padding="14dp" />
+
+        <EditText
+            android:id="@+id/auth_register_password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            android:hint="@string/auth_hint_password"
+            android:inputType="textPassword"
+            android:autofillHints="newPassword"
+            android:padding="14dp" />
+
+        <Button
+            android:id="@+id/auth_register_btn"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="@string/auth_btn_register"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/auth_register_link_login"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/auth_link_go_login"
+            android:textSize="14sp"
+            android:padding="8dp" />
+
+    </LinearLayout>
+</ScrollView>
