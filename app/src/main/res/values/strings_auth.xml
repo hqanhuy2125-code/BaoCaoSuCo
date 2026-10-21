@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tieu de man hinh -->
+    <string name="auth_title_login">Đăng nhập</string>
+    <string name="auth_title_register">Đăng ký tài khoản</string>
+
+    <!-- Nhan (hint) cac truong -->
+    <string name="auth_hint_email">Email</string>
+    <string name="auth_hint_password">Mật khẩu (ít nhất 6 ký tự)</string>
+    <string name="auth_hint_display_name">Họ và tên</string>
+
+    <!-- Nut bam -->
+    <string name="auth_btn_login">Đăng nhập</string>
+    <string name="auth_btn_register">Đăng ký</string>
+    <string name="auth_btn_logout">Đăng xuất</string>
+    <string name="auth_link_go_register">Chưa có tài khoản? Đăng ký</string>
+    <string name="auth_link_go_login">Đã có tài khoản? Đăng nhập</string>
+
+    <!-- Loi xac thuc dau vao -->
+    <string name="auth_err_email_empty">Vui lòng nhập email</string>
+    <string name="auth_err_email_invalid">Email không đúng định dạng</string>
+    <string name="auth_err_password_short">Mật khẩu phải có ít nhất 6 ký tự</string>
+    <string name="auth_err_name_empty">Vui lòng nhập họ và tên</string>
+
+    <!-- Loi dang nhap / dang ky -->
+    <string name="auth_err_login_failed">Đăng nhập thất bại. Kiểm tra lại email và mật khẩu.</string>
+    <string name="auth_err_register_failed">Đăng ký thất bại. Vui lòng thử lại.</string>
+
+    <!-- Thong bao chung -->
+    <string name="auth_err_unknown_role">Vai trò không hợp lệ, đã đăng xuất.</string>
+    <string name="auth_register_success">Đăng ký thành công</string>
+    <string name="auth_loading">Đang xử lý…</string>
+
+    <!-- Goi y tai khoan demo -->
+    <string name="auth_demo_hint">Cư dân: cudan@bcsc.vn / 123456\nQuản lý: quanly@bcsc.vn / 123456</string>
+
+    <!-- Man hinh cu dan -->
+    <string name="resident_main_title">Cư dân</string>
+    <string name="resident_main_greeting">Xin chào, %1$s</string>
+
+    <!-- Man hinh quan ly -->
+    <string name="manager_main_title">Quản lý</string>
+    <string name="manager_main_greeting">Xin chào, %1$s</string>
+</resources>
