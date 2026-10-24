@@ -17,7 +17,7 @@
 
 ## Remote PR, CI and test evidence
 
-- At inspection, PR #1/#3/#4 were merged; PR #2 was closed without merge; **0 open PRs**.
+- At the pre-DOC-SYNC-01 remote inspection on 2026-10-24, PR #1/#3/#4 were merged; PR #2 was closed without merge; **0 open PRs at that snapshot**. This is not a claim about PRs opened afterward.
 - GitHub reported **0 Actions workflow runs** and no commit combined status entries for the inspected HEAD. The repository's existing two Java tests are the Android starter example tests.
 - PR #4's author reported successful Firebase signup/signin, selected Firestore Rules checks, cold-start routing, `assembleDebug` and unit tests. **Author-reported evidence only**: no independent CI, device run or end-to-end acceptance was performed during this documentation reconciliation.
 - Remote `main` reported `protected=false` when inspected. Do not infer branch policy approval from this observation.
