@@ -38,6 +38,13 @@ public class ResidentReportInputValidatorTest {
     }
 
     @Test
+    public void nonBreakingAndFullWidthSpacesAreBlank() {
+        assertEquals(EnumSet.allOf(ResidentReportInputValidator.Field.class),
+                ResidentReportInputValidator.findMissingFields(
+                        "\u00A0", "\u2007", "\u202F", "\u3000"));
+    }
+
+    @Test
     public void eachCallReturnsIndependentResult() {
         EnumSet<ResidentReportInputValidator.Field> first =
                 ResidentReportInputValidator.findMissingFields("", "", "", "");
