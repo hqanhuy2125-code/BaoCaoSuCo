@@ -6,6 +6,14 @@
 
 Java/XML app → Firebase Authentication (email/password) → Cloud Firestore collections `users`, `incidents`, `history` (final path to decide). Firestore SDK can provide live listeners while app is running. No separate server is needed for basic data operations **if** Rules can safely enforce requirements.
 
+## Source implementation checkpoint — 2026-10-24 (observed, not approval)
+
+- Remote `main` at `bca86b786804068b60646e30aa3e32a8206d8a89` contains Firebase Auth SDK/Firestore dependencies, `AuthRepositories.USE_FIREBASE = true`, and `FirebaseAuthRepository` for email/password login, registration, session/profile lookup and logout.
+- The profile implementation stores `uid`, `displayName`, `email`, `role`, `createdAt` at `users/{uid}`; registration assigns `RESIDENT`. `User.java` and `firestore.rules` agree on the `uid` field, while Data Contract v0 does not yet list it.
+- Root `firestore.rules` contains client read/create/update constraints for `users` and a default-deny catch-all for other collections. **No allow rules for `incidents` or history** are implemented in this snapshot.
+- PR #4 author reports selected Auth/Rules/build tests PASS. This is not independent evidence that rules were deployed, manager provisioning exists or incident operations pass E2E.
+- `DEC-004` is still `PROPOSED` in `DECISION_LOG.md`; reconcile its human approval record separately rather than changing the decision label based solely on source merges.
+
 ## Security gate before production writes
 
 - `request.auth != null` is necessary but **not sufficient**.
@@ -37,4 +45,4 @@ Java/XML app → Firebase Authentication (email/password) → Cloud Firestore co
 
 [ ] Firebase product/project and billing choice confirmed; [ ] roles bootstrapped securely; [ ] schema and indexes accepted; [ ] rules reviewed; [ ] emulator rules tests PASS; [ ] Android smoke login/create/read/assign/confirm PASS; [ ] cross-role privacy tests PASS; [ ] usage and error/connection-handling documented.
 
-This file does not supply runnable Firestore rules because the collection shape and authorization mechanism are not yet confirmed. No insecure permissive example rules are authorized.
+This contract does not supply **approved runnable rules for `incidents`/history** because their collection shape and authorization mechanism are not yet confirmed. The repository does contain an implemented `firestore.rules` for `users`; its deployment state remains unverified. No insecure permissive incident rules are authorized.
