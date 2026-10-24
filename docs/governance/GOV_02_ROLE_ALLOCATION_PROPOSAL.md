@@ -1,74 +1,46 @@
-# GOV-02 — Assignment proposal and reviewer matrix (24/10/2026)
+# GOV-02 — Module boundaries and unassigned integration work (2026-10-24)
 
-**Status: NOMINATED / NOT RATIFIED.** This is a concrete staffing proposal for review, not evidence that a person accepted a new workload, a role was delegated, or security was approved. Refer to [GOV-02 Issue #9](https://github.com/hqanhuy2125-code/BaoCaoSuCo/issues/9). Baseline: `main@287e93519473b3ee52e314e95e2ad3883b93f6ba` (PR #6 GOV-01 merged).
+**Status: CORRECTED_SCOPE / PENDING_DECISION.** This revision supersedes GOV-02's earlier proposal to add unrelated work to Hà Quang Huy and Nguyễn Đức Hưng. It records an explicit correction from the acting Technical Lead / Resident owner in the 2026-10-24 conversation. **No additional module is assigned to either person.**
 
-## Basis for assignments (facts versus nominations)
+## Ownership boundaries
 
-- **RECORDED:** Trần Quốc Huy (Member 2) is acting Technical Lead/Integration Owner and retains Java Resident module; coordinates `data/**`, `common/**`, specifications, integration and security reviews. Not blanket write/merge/security approval.
-- **RECORDED:** Trần Huỳnh Hồng Phúc (Member 3) is UI/UX only; XML implementation requires a specifically approved UI task; no Manager Java ownership.
-- **SOURCE-BACKED HISTORICAL WORK:** Hà Quang Huy (Member 1 track, GitHub PR #3/#4 created by `hqanhuy2125-code`) implemented Auth/Firebase user profiles; **future work not accepted yet**.
-- **OLD PLAN, NOT RECONFIRMED:** Nguyễn Đức Hưng (Member 4) was responsible for pure state logic/deadlines/tests.
-- **PROPOSAL:** Assign Manager Java to Nguyễn Đức Hưng; shared Java repository/Firebase adapter and Rules authoring to Hà Quang Huy, leveraging earlier experience. Require individual acceptance, suitable time allocation and reviewers. These are not mandatory commitments.
+| Team member | Module / responsibilities in scope | Not assigned by GOV-02 |
+|---|---|---|
+| **Trần Quốc Huy (Member 2)** | Technical Lead / Integration Owner, **Resident Java**; custodian of shared paths/contracts and coordinated integration | Shared-code authoring, Manager Java, security deployment or L3 authorization are **not automatically assumed** from integration ownership |
+| **Trần Huỳnh Hồng Phúc (Member 3)** | **UI/UX only**: screen designs, user experience; task-approved XML implementation when explicitly allocated | Manager Java, business logic, shared repository or Firestore Rules |
+| **Hà Quang Huy (Member 1)** | **Own existing Auth/Firebase Authentication and user-profile module only**, as evidenced by merged PR #3/#4. Continuing feature work/maintenance requires a scoped task | **NOT ASSIGNED:** IncidentRepository, `data/**`, `common/**` incident models, Firestore incident/history Rules, Manager role provisioning or other teams' features |
+| **Nguyễn Đức Hưng (Member 4)** | **Own earlier-assigned core logic module only**: state transition/deadline logic and related tests, subject to reconfirmation for new LOG tasks | **NOT ASSIGNED:** Manager Java, independent Rules security tests/reviews, shared Firebase repository or unrelated business modules |
 
-## Proposed owners, reviewers, files and risk controls
+**Clarification:** Previous GOV-02 PR/Issue discussion nominated Hưng for Manager Java and Hà Quang Huy for shared Repository and Rules. Those nominations were **incorrectly extended** beyond the members' scope and are **withdrawn**. Reviewers must not treat the older proposal or issue comment as accepted assignments.
 
-| Work area | Nominated implementer | Review/coordination | Task-approved file scope | Gate |
-|---|---|---|---|---|
-| Java Resident features (RES-01..05) | **Trần Quốc Huy** (already recorded) | Independent authorized team member (TBD, e.g. Hà Quang Huy if accepted); Huy coordinates integration | `app/src/main/java/com/example/baocaosuco/resident/**`, resident tests | L1 each task; do not modify shared models/manifest by implication |
-| UI/UX and dedicated XML | **Trần Huỳnh Hồng Phúc** (design role recorded; XML task nomination) | Trần Quốc Huy for Resident screens; Manager Java author for Manager screens | UI design, specifically named `resident_*.xml`, `manager_*.xml`, dedicated UI resources | L1/L2 by touched paths; freeze screen IDs with Java consumers |
-| Java Manager features (MGR-01..03) | **Nguyễn Đức Hưng — NOMINATED** | **Trần Quốc Huy — nominated reviewer**; Phúc for UI integration | `app/src/main/java/com/example/baocaosuco/manager/**`, manager Java tests | L1; Hưng must accept scope; manager shell role checks/logout preserved; depends on CON/LOG and mock API |
-| State machine/deadline tests (LOG-01/02) | **Nguyễn Đức Hưng — NOMINATED/RECONFIRMATION** | **Trần Quốc Huy — nominated reviewer** | `app/src/main/java/com/example/baocaosuco/logic/**`, logic tests | L1/L2 depending on shared API; avoid simultaneous edits to `manager/**` in same task |
-| Auth maintenance | **Hà Quang Huy — RECONFIRMATION NEEDED** | **Trần Quốc Huy — nominated reviewer** | `app/src/main/java/com/example/baocaosuco/auth/**` and task-named Auth XML | L1/L2, no credential/config changes without approval |
-| Shared model/repository interface/mock/Firebase adapter (CORE-01, REPO-01, REPO-02) | **Hà Quang Huy — NOMINATED** | **Trần Quốc Huy — nominated independent reviewer/integration custodian**, plus Hưng on Manager contract | `app/src/main/java/com/example/baocaosuco/data/**`, `common/**`, isolated tests; only named files per task | L2: CON-01/02/03 sign-off before canonical implementation; REPO-02 only after SEC-02 Rules verification |
-| Firestore Rules and indexes (SEC-02) | **Hà Quang Huy — NOMINATED Rules author** | **Trần Quốc Huy — nominated independent security/data reviewer**; Hưng nominated negative-test contributor | Root `firestore.rules`, approved Firestore indexes and dedicated emulator tests | **L3:** group lead or explicit authorized delegate additionally approves; forbid permissive rules, client role self-promotion, deploy until tests PASS |
-| Trusted MANAGER provisioning (SEC-01) | **Hà Quang Huy — NOMINATED technical author**, authority pending | **Trần Quốc Huy — nominated review** | Documentation first; approved code/admin operations defined later | **L3 approval required**; no live role grants until explicit approval |
-| Shared Manifest, Gradle, navigation, governance/contracts | **Task-assigned author only**; Huy is custodian | Affected feature owners + independent reviewer if Huy authors | Explicit listed files only | L2/L3 by change type; no blanket write permission |
+## Path ownership and task boundaries
 
-The table **does not** assign an AI as a human owner/reviewer. AI may prepare code under a named human's approved task; it cannot provide the required independent human approval.
+| Repo path / subsystem | Implementation owner | Technical integration / review | Gate |
+|---|---|---|---|
+| `app/src/main/java/com/example/baocaosuco/auth/**`, existing Auth-specific UI | Hà Quang Huy's Auth module (historical implementation; continuation task-specific) | Trần Quốc Huy as Integration Owner; actual reviewer assigned per PR | No cross-module feature additions by default |
+| `app/src/main/java/com/example/baocaosuco/logic/**`, related unit tests | Nguyễn Đức Hưng, original LOG allocation (new task acceptance pending) | Trần Quốc Huy | Only state/deadline/core logic scope; contract changes reviewed separately |
+| `app/src/main/java/com/example/baocaosuco/resident/**`, related Java tests | Trần Quốc Huy | Authorized independent reviewer on Huy-authored PR | RES task paths only |
+| UI/UX designs; explicitly assigned layout XML | Trần Huỳnh Hồng Phúc | Integration + consuming module owner | May modify only task-approved XML/layouts, not Java modules |
+| `app/src/main/java/com/example/baocaosuco/manager/**`, Manager Java tests | **UNASSIGNED** | Trần Quốc Huy coordinates integration | MGR-01/02/03 blocked until named implementer and reviewer |
+| `app/src/main/java/com/example/baocaosuco/data/**`, `common/**`, IncidentRepository and adapters | **UNASSIGNED** | Trần Quốc Huy is custodian, not automatic author | CORE-01/REPO-01/02 blocked until contract, implementer, independent reviewer |
+| Root `firestore.rules`, indexes, secure Manager provisioning and deployed access controls | **UNASSIGNED** | Trần Quốc Huy coordinates; independent security reviewer and L3 approver required | SEC-01/02 blocked; no role grants, permissive Rules, deployment or billing |
+| Shared configuration / navigation / governance / contracts | Per-task named author; Trần Quốc Huy coordinates | Affected owners and independent reviewer if Huy writes | L2/L3 approval per `CHANGE_CONTROL.md` |
 
-## Proposed capacity split (must be accepted)
+## Remaining decisions (GOV-02 cannot be closed yet)
 
-- **Hưng** is nominated for both LOG and MGR Java. Prioritize `LOG-01/02` before `MGR-01/02`, allow parallel UI mock, and confirm workload is achievable with the course timetable. If Hưng declines, **MGR stays UNASSIGNED**; do not silently transfer to Huy or Phúc.
-- **Hà Quang Huy** is nominated for shared repository and Rules plus possible Auth maintenance. Split into separate tasks/branches: `CORE-01`, `REPO-01`, `SEC-01`, `SEC-02`, `REPO-02`. Never combine security rule changes with feature/UI PRs. If declined, tasks remain blocked.
-- **Trần Quốc Huy** reviews and integrates; retains Resident Java. If Huy authors a shared/L2/L3 PR, another independent authorized reviewer must approve.
-- **Phúc** has UI/UX scope only; Manager UI XML does not make Phúc the Manager Java author.
+- [ ] Name **one implementer and an independent reviewer** for Manager Java. Do not assign to Phúc or Hưng by inference.
+- [ ] Name author and independent reviewer for shared `IncidentRepository` and incident data models. Do not assign to Hà Quang Huy by inference.
+- [ ] Name Firestore Rules/security implementation author, independent security reviewer, and an authorized L3 approver. Technical review is not deployment approval.
+- [ ] If additional work is intended for Trần Quốc Huy or AI-assisted implementation, authorize **explicitly by individual task**, bounded by a task's `ALLOWED_PATHS`, reviewer and tests; never enlarge his workload silently.
+- [ ] Reconfirm task availability of Hà Quang Huy **only for Auth** and Nguyễn Đức Hưng **only for core logic**.
+- [ ] Assign independent reviewer for Huy-authored L2/L3 PRs and decide GitHub branch protection/checks.
+- [ ] Record actual approval/acceptance evidence for these slots in `DECISION_LOG.md` and module ownership policy through a reviewed PR before `DEC-010` is `CONFIRMED`.
 
-## Approval and access restrictions
+## Contract and security guardrails
 
-1. Every task uses `TASK_ID, OWNER, REVIEWER, BASE_SHA, BRANCH, ALLOWED_PATHS, PROTECTED_PATHS, DEPENDENCIES, EXPECTED_OUTPUT, ACCEPTANCE_CRITERIA, APPROVAL_REFERENCE`. Use one writer per task/branch.
-2. L2 shared models/contracts require integration + affected module owner sign-off. `DEC-006/007/008/009` are not automatically confirmed by a nomination.
-3. L3 Firestore Rules, privileged role administration, data loss and billing require authorization from **group lead or an explicitly delegated L3 decision-maker** plus independent review. No such delegation is proven by the acting integration role alone.
-4. No Firestore incident/history writes, Manager role grants or Rules deployment until schema/security design is approved and actual Firebase Emulator tests pass.
-5. Current `main` had no enforced branch protection in the checkpoint. Repo admin must explicitly decide and configure required reviews/checks; no claim that this document activates protections.
+- PR #8 and Issues #10/#11/#12 remain **DRAFT / NOT FROZEN** pending schema, transitions, callback contracts and relevant reviewers.
+- No incident/history production writes, Firebase Rules deployment, role escalation or billing changes until separately authorized and tested.
+- Existing `MODULE_OWNERSHIP.md`, `CHANGE_CONTROL.md`, `WORKTREE_POLICY.md`, module source and unrelated teammate branches remain untouched by this document.
+- One scoped task per branch/PR. No silent merge, overwrite or self-approval.
 
-## Required acceptance record — issue comments or equivalent decision evidence
-
-Ask each nominated individual to acknowledge the work and reviewer responsibility under [Issue #9](https://github.com/hqanhuy2125-code/BaoCaoSuCo/issues/9):
-
-```text
-ROLE/AREA:
-ACCEPT or DECLINE:
-PERSON AND GITHUB USERNAME:
-IMPLEMENTATION TASKS / CAPACITY:
-REVIEWER ACCEPTANCE:
-ALLOWED_PATHS ACKNOWLEDGED:
-DATE:
-APPROVAL EVIDENCE URL:
-```
-
-- [ ] Hà Quang Huy confirms Auth maintenance, shared repository/Rules author tasks and available capacity.
-- [ ] Nguyễn Đức Hưng confirms LOG + MGR Java tasks and available capacity.
-- [ ] Trần Huỳnh Hồng Phúc confirms UI/UX/optional task-approved XML handoff boundaries.
-- [ ] Trần Quốc Huy confirms reviewer workload and appoints a **different reviewer** for PRs he writes.
-- [ ] Named group lead or delegated L3 authority confirms security review and deployment approval procedure.
-- [ ] GitHub repository admin confirms required reviewers/branch protection enforcement (if available).
-- [ ] DEC-010 record updated from PENDING_DECISION only **after** evidence above, with separate reviewed PR.
-
-## Next handoffs when accepted
-
-1. **CON-01 Issue #10**: approve Firestore documents and history path, fields, permissions.
-2. **CON-02 Issue #11**: approve state changes, deadline SLA and trusted write-history rules.
-3. **CON-03 Issue #12**: approve Java repository signatures and callback semantics with both feature owners.
-4. Only then proceed with CORE-01/LOG-01/02/REPO-01/SEC-01/02/REPO-02 and RES/MGR tasks in separate PRs.
-
-**Verdict:** GOV-02 responsibility proposal ready for team acceptance; **DEC-010 remains PENDING_DECISION**, and the proposed owners are not automatically authorized to write shared source.
+**GOV-02 status:** Correction documented; missing implementation and security-review roles are explicitly **UNASSIGNED / BLOCKED**, not assigned to other teammates.
