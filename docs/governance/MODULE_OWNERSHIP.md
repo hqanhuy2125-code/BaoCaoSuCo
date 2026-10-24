@@ -1,40 +1,58 @@
 # Module ownership and shared-path access
 
-**Status:** `PARTIALLY_UPDATED / PENDING_TEAM_SIGNOFF` (2026-10-24). This is a documented, narrow responsibility update from the active Member 2 / technical integration handoff. It does not imply all shared source owners, reviewers, or security approvals have been assigned.
+**Status:** `PENDING_DECISION` for full DEC-010 closure. **Partial allocation recorded on 2026-10-24** from the acting integration lead's instruction. This file distinguishes the named **path custodian/integration coordinator** from the **task implementer** and the **independent reviewer**. A custodian assignment does not authorize blanket editing, merging, changing Firebase Rules or approving one's own work.
 
-## Responsibility update recorded 2026-10-24
+## Current responsibility record (24/10/2026)
 
-| Member | Confirmed in current handoff | Implementation boundary |
+| Person | Recorded responsibility | Boundary / outstanding confirmation |
 |---|---|---|
-| Trần Quốc Huy (Member 2) | Acting technical integration lead; retains Resident module responsibilities | Coordinates shared contracts/PR integration and Resident Java. Individual shared changes still require task-specific review. |
-| Trần Huỳnh Hồng Phúc (Member 3) | UI/UX only, no longer owner of Manager business logic | Design responsibility confirmed; XML layout implementation and precise allowed paths require a task assignment. |
-| Hà Quang Huy (Member 1) | Historical Auth/Firebase work evidenced by PR #3/#4 | Future Auth ownership/review availability not re-confirmed. |
-| Nguyễn Đức Hưng (Member 4) | Previous plan allocates workflow logic and tests | New-task responsibility not re-confirmed during this handoff. |
+| **Trần Quốc Huy (Member 2)** | **Technical Lead / Integration Owner**, coordinator of shared contracts and protected paths; Java Resident module | Confirmed by Member 2 in this working session. Author of each L2/L3 change and an independent reviewer must still be assigned per task. |
+| **Trần Huỳnh Hồng Phúc (Member 3)** | **UI/UX only**: designs, screen flows, visual consistency; XML implementation only when a task explicitly assigns layouts | **Not** the Manager Java/business logic owner. Changes to layouts used by another module need agreed view IDs/owner review. |
+| Hà Quang Huy (Member 1) | Auth/Firebase contributor evidenced by merged PR #3 and PR #4 | Future Auth maintenance and integration tasks **NOT RECONFIRMED**; no silent edits to `auth/**`. |
+| Nguyễn Đức Hưng (Member 4) | Workflow state logic, deadlines and testing under the earlier allocation | Future `logic/**` task acceptance **NOT RECONFIRMED**. |
+| **UNASSIGNED** | Manager Java/business module | Must identify an implementer and reviewer before MGR source work or final cross-module contract sign-off. |
 
-**Unassigned/blocking:** Manager **Java implementation** has no confirmed owner. Author/editor of `data/**`, `common/**`, shared `IncidentRepository` and Firestore Rules likewise needs explicit task allocation. Trần Quốc Huy is the named **integration reviewer/coordinator**, not automatic implementer of every shared file. Do not silently assign Manager implementation to Phúc or Huy.
+**Evidence limit:** only the Member 2 integration takeover and Phúc's UI/UX-only reassignment have been stated explicitly in the active session. Approval or continued availability of other members has not been independently established. DEC-010 remains `PENDING_DECISION` until its open slots and reviewer assignments are recorded.
 
-**Evidence boundary:** this is an instruction received from Member 2 in the 2026-10-24 working session. Team-wide ratification/other owners' acceptance has not been independently verified. `DEC-010` remains `PENDING_DECISION` until remaining owner/reviewer slots and policy are recorded.
+## Protected-path stewardship and edit permissions
 
-| Area | Primary role | Editable paths after approval | Dependencies |
+The path custodian **for technical coordination of all shared/protected paths is Trần Quốc Huy**. That identifies who must be consulted before changing shared files; it does **not** confer the right to self-approve or change other members' work. All path patterns below are relative to the repository root.
+
+| Paths / assets | Custodian or feature owner | Allowed task implementer | Review gate |
 |---|---|---|---|
-| Technical integration / shared review | Trần Quốc Huy (acting integration lead) | Changes to shared paths only under a separately approved L2/L3 task | Shared contracts; approval from impacted owner(s) |
-| Auth/shell | Hà Quang Huy (implemented PR #3/#4; future owner pending) | `auth/**`, root activity/navigation only after renewed task assignment | Integration review |
-| Resident Java feature | Trần Quốc Huy (Member 2) | `resident/**`, resident Java tests (task-approved paths) | Shared models/repository/state contract |
-| UI/UX | Trần Huỳnh Hồng Phúc (Member 3) | Design deliverables; `resident_*.xml` / `manager_*.xml` only when task specifically assigns XML implementation | Screen IDs/navigation contract |
-| Manager Java feature | **UNASSIGNED** | `manager/**` Java only after owner/reviewer assignment | Shared models/logic/security |
-| Workflow/business logic | Nguyễn Đức Hưng (prior allocation; pending reconfirmation) | `logic/**` and tests only after task assignment | Shared types/state |
-| Shared data/repositories/security | **IMPLEMENTATION OWNER UNASSIGNED**; integration coordinator: Trần Quốc Huy | `data/**`, `common/**`, repository interfaces, Firestore rules each require explicit approval | Data/state/security decisions |
+| `app/src/main/java/com/example/baocaosuco/resident/**`, resident Java tests | Trần Quốc Huy | Huy or a separately assigned Resident task implementer | L1 task approval; independent review for a PR authored by Huy |
+| `app/src/main/java/com/example/baocaosuco/manager/**`, manager Java tests | **UNASSIGNED** | **BLOCKED** until task owner is named | Manager owner + integration review |
+| `app/src/main/java/com/example/baocaosuco/auth/**`, `auth_*.xml` | Auth feature owner **PENDING RECONFIRMATION** (historically Hà Quang Huy) | Only specifically assigned Auth task implementer | Auth owner + Huy integration review |
+| `app/src/main/java/com/example/baocaosuco/logic/**`, logic tests | Earlier allocation: Nguyễn Đức Hưng; **PENDING RECONFIRMATION** | Assigned LOG task implementer only | Logic owner + integration review |
+| `app/src/main/res/layout/resident_*.xml`, `resident_main.xml` | UI/UX: Phúc; Resident integration: Huy | Phúc when XML task approved; otherwise named task author | Huy checks IDs/navigation and existing shell ownership |
+| `app/src/main/res/layout/manager_*.xml`, `manager_main.xml` | UI/UX: Phúc; Manager integration owner **UNASSIGNED** | Phúc when XML task approved | Integration review; Manager Java consumer review once assigned |
+| UI designs, screen specifications, dedicated UI resources | Phúc | Phúc within approved UI-01/02/03 scope | Huy integration for cross-module resource changes |
+| `app/src/main/java/com/example/baocaosuco/data/**`, `common/**`, shared repository interface/adapter | **Huy = integration custodian**; implementation author **UNASSIGNED** | Named author in L2 task only | Huy + affected feature owners; no self-only approval |
+| `app/src/main/java/com/example/baocaosuco/MainActivity.java`, `app/src/main/AndroidManifest.xml`, Gradle/config files | **Huy = integration custodian** | Named integration/feature author in L2 task | Huy + affected module owners; independent reviewer when Huy authors |
+| `app/src/main/res/values/**`, shared drawable/theme/string resources | **Huy = integration custodian**; design contribution from Phúc | Named UI/integration author in L2 task | Phúc for design impact + Huy + affected screen owner |
+| `firestore.rules`, Firestore indexes, role provisioning and Firebase Console/billing settings | **Huy = technical coordinator**, security author/reviewer **UNASSIGNED** | **BLOCKED** until L3 task, security reviewer and accountable approver named | Group lead or explicitly delegated security authority + impacted owners; actual Rules tests |
+| `docs/specifications/**`, `docs/governance/**`, `README.md`, `AGENTS.md`, `AGENT.md`, scope documents | **Huy = documentation/change coordinator** | Named documentation task author | Integration + affected owners; human evidence before changing decision status |
 
-Paths refer to the proposed Java root `app/src/main/java/com/example/baocaosuco/`; layout XML files live under `app/src/main/res/layout/`. Agree on filename prefixes such as `resident_` and `manager_` to reduce collisions.
+The existing screen shell files (`ResidentMainActivity.java`, `ManagerMainActivity.java`, `resident_main.xml`, `manager_main.xml`) were introduced before this allocation. Preserve role checks, logout, existing XML IDs and feature navigation until the affected owner reviews any change.
 
-## Shared/protected paths
+## Operational rules (no implicit approval)
 
-- `app/build.gradle.kts`, `build.gradle.kts`, `settings.gradle.kts`, `gradle/**`
-- `app/src/main/AndroidManifest.xml`, root `MainActivity.java`, themes/colors when shared
-- `data/**`, `common/**`, Firestore rules/indexes, `AGENTS.md`, scope/contracts
-- `README.md` and governance docs affecting all contributors
+1. **One task = one focused branch/PR.** A task names `OWNER`, `REVIEWER`, `BASE_SHA`, `ALLOWED_PATHS`, `PROTECTED_PATHS`, dependencies and actual test evidence. One active writer per checkout/branch.
+2. **L1:** Only module-local Java or task-approved layouts/tests; no implicit Manifest, navigation, shared data or Gradle changes.
+3. **L2:** Shared models/interfaces, repository implementation, navigation, Android configuration and contracts require Huy as integration custodian **plus affected owners**. If Huy wrote the PR, a different authorized human reviews it before merge.
+4. **L3:** Firestore Security Rules, trusted manager role provisioning, billing and destructive operations still require explicit group-lead/security-owner authorization under `CHANGE_CONTROL.md`. Huy's integration assignment alone is not blanket L3 approval.
+5. **Review vs implementation:** Phúc may own UI/UX without owning Java business logic; a Java Manager implementer must be appointed independently. No self-selection of missing owners.
+6. **Contract freeze gate:** CON-01/02/03 can be drafted/reviewed while ownership is partial, but cannot be marked FROZEN or authorized for shared runtime implementation until impacted reviewers and shared source owners have accepted the contract.
+7. Never silently merge, force push, reset/clean, overwrite local work, enable Firebase billing, deploy rules or grant Manager accounts.
 
-These require an integration/shared-code owner plus review from affected module owner(s). **No owner assigned yet**: a module owner cannot infer permission to edit shared paths.
+## Open GOV-01 decisions required to close DEC-010
+
+- [ ] Identify the Java Manager module owner and its independent reviewer.
+- [ ] Reconfirm Auth maintainer and Member 4's logic/testing commitment.
+- [ ] Assign an actual author and independent reviewer for `data/**`, `common/**` and repository interfaces.
+- [ ] Name Firestore Rules author, security reviewer and group-lead/delegated L3 approver.
+- [ ] Confirm independent PR reviewer for Huy-authored governance/contracts/shared code; record acceptance by impacted module owners.
+- [ ] Confirm GitHub branch/PR protection policy (the previously inspected remote `main` reported `protected=false`).
 
 ## Task header template
 
@@ -54,6 +72,6 @@ APPROVAL_REFERENCE:
 
 ## Cross-module dependencies
 
-- Member 4 publishes pure functions/interfaces early, with examples and tests; Member 2/3 mock the interface until implementation is ready.
-- The shared repository interface is owned centrally, not redefined independently in `resident/` and `manager/`.
-- Any new field, status or permission needs a contract update and dependent owner sign-off before implementation.
+- If Member 4 accepts the renewed LOG task, publish pure state/deadline functions with unit tests under the approved shared contract.
+- Resident and Manager **Java implementers** consume one centrally approved repository interface; Phúc contributes UI designs/XML via an agreed view-ID handoff.
+- Any new field, role, status or security permission requires contract review and affected owner sign-off before implementation. Mock screens may proceed only under explicitly approved, isolated paths.
