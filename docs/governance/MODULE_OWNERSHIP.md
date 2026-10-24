@@ -1,6 +1,6 @@
 # Module ownership and shared-path access
 
-**Status:** `PENDING_DECISION` for full DEC-010 closure. **Partial allocation recorded on 2026-10-24** from the acting integration lead's instruction. This file distinguishes the named **path custodian/integration coordinator** from the **task implementer** and the **independent reviewer**. A custodian assignment does not authorize blanket editing, merging, changing Firebase Rules or approving one's own work.
+**Status:** `PENDING_DECISION` for full DEC-010 closure. **Partial allocation and V2 Manager Java proposal recorded on 2026-10-24** from the acting integration lead's instruction. This file distinguishes the named **path custodian/integration coordinator** from the **task implementer** and the **independent reviewer**. A custodian assignment does not authorize blanket editing, merging, changing Firebase Rules or approving one's own work.
 
 ## Current responsibility record (24/10/2026)
 
@@ -10,9 +10,9 @@
 | **Trần Huỳnh Hồng Phúc (Member 3)** | **UI/UX only**: designs, screen flows, visual consistency; XML implementation only when a task explicitly assigns layouts | **Not** the Manager Java/business logic owner. Changes to layouts used by another module need agreed view IDs/owner review. |
 | Hà Quang Huy (Member 1) | Auth/Firebase contributor evidenced by merged PR #3 and PR #4 | Future Auth maintenance and integration tasks **NOT RECONFIRMED**; no silent edits to `auth/**`. |
 | Nguyễn Đức Hưng (Member 4) | Workflow state logic, deadlines and testing under the earlier allocation | Future `logic/**` task acceptance **NOT RECONFIRMED**. |
-| **UNASSIGNED** | Manager Java/business module | Must identify an implementer and reviewer before MGR source work or final cross-module contract sign-off. |
+| **Trần Quốc Huy — V2 PROPOSED** | **Manager Java/business module**, in addition to Resident Java; supported by the prior-session assignment proposal | **Not yet formally ratified in DEC-010.** Implement only under a scoped MGR task and independent PR reviewer. |
 
-**Evidence limit:** only the Member 2 integration takeover and Phúc's UI/UX-only reassignment have been stated explicitly in the active session. Approval or continued availability of other members has not been independently established. DEC-010 remains `PENDING_DECISION` until its open slots and reviewer assignments are recorded.
+**Evidence limit:** Member 2's integration takeover and Phúc's UI/UX-only reassignment are already recorded. The user has now supplied a prior-session **V2 proposal** for Member 2 to take Java Manager as well; this is recorded without assuming team ratification. Approval or continued availability of other members has not been independently established. DEC-010 remains `PENDING_DECISION` until its open slots and reviewer assignments are recorded.
 
 ## Protected-path stewardship and edit permissions
 
@@ -21,11 +21,11 @@ The path custodian **for technical coordination of all shared/protected paths is
 | Paths / assets | Custodian or feature owner | Allowed task implementer | Review gate |
 |---|---|---|---|
 | `app/src/main/java/com/example/baocaosuco/resident/**`, resident Java tests | Trần Quốc Huy | Huy or a separately assigned Resident task implementer | L1 task approval; independent review for a PR authored by Huy |
-| `app/src/main/java/com/example/baocaosuco/manager/**`, manager Java tests | **UNASSIGNED** | **BLOCKED** until task owner is named | Manager owner + integration review |
+| `app/src/main/java/com/example/baocaosuco/manager/**`, manager Java tests | **Trần Quốc Huy — V2 PROPOSED** | Huy only on task-approved MGR Java paths after v2 acceptance | Independently authorized reviewer; Huy cannot self-review his own Manager PR |
 | `app/src/main/java/com/example/baocaosuco/auth/**`, `auth_*.xml` | Auth feature owner **PENDING RECONFIRMATION** (historically Hà Quang Huy) | Only specifically assigned Auth task implementer | Auth owner + Huy integration review |
 | `app/src/main/java/com/example/baocaosuco/logic/**`, logic tests | Earlier allocation: Nguyễn Đức Hưng; **PENDING RECONFIRMATION** | Assigned LOG task implementer only | Logic owner + integration review |
 | `app/src/main/res/layout/resident_*.xml`, `resident_main.xml` | UI/UX: Phúc; Resident integration: Huy | Phúc when XML task approved; otherwise named task author | Huy checks IDs/navigation and existing shell ownership |
-| `app/src/main/res/layout/manager_*.xml`, `manager_main.xml` | UI/UX: Phúc; Manager integration owner **UNASSIGNED** | Phúc when XML task approved | Integration review; Manager Java consumer review once assigned |
+| `app/src/main/res/layout/manager_*.xml`, `manager_main.xml` | UI/UX: Phúc; Manager Java consumer: **Huy (V2 PROPOSED)** | Phúc when XML task approved | Huy validates View IDs, navigation and wiring; independent reviewer if Huy authored related shared PR |
 | UI designs, screen specifications, dedicated UI resources | Phúc | Phúc within approved UI-01/02/03 scope | Huy integration for cross-module resource changes |
 | `app/src/main/java/com/example/baocaosuco/data/**`, `common/**`, shared repository interface/adapter | **Huy = integration custodian**; implementation author **UNASSIGNED** | Named author in L2 task only | Huy + affected feature owners; no self-only approval |
 | `app/src/main/java/com/example/baocaosuco/MainActivity.java`, `app/src/main/AndroidManifest.xml`, Gradle/config files | **Huy = integration custodian** | Named integration/feature author in L2 task | Huy + affected module owners; independent reviewer when Huy authors |
@@ -47,7 +47,7 @@ The existing screen shell files (`ResidentMainActivity.java`, `ManagerMainActivi
 
 ## Open GOV-01 decisions required to close DEC-010
 
-- [ ] Identify the Java Manager module owner and its independent reviewer.
+- [ ] Record group acceptance of **Trần Quốc Huy as Java Manager owner (V2 PROPOSED)** and assign an independent reviewer for Huy-authored MGR work.
 - [ ] Reconfirm Auth maintainer and Member 4's logic/testing commitment.
 - [ ] Assign an actual author and independent reviewer for `data/**`, `common/**` and repository interfaces.
 - [ ] Name Firestore Rules author, security reviewer and group-lead/delegated L3 approver.
