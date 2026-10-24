@@ -39,6 +39,18 @@
 
 **Other decisions unchanged:** This note is not approval of `DEC-004`–`DEC-009` or `DEC-011`–`DEC-013`. Contract drafts CON-01/02/03 may be reviewed but are **NOT FROZEN** and cannot authorize live incident writes.
 
+## 2026-10-24 GOV-02 — Manager Java v2 assignment proposal (awaiting formal sign-off)
+
+**Source:** The user supplied the full prior-session v2 proposal on 24/10/2026. Under that proposal, **Trần Quốc Huy** takes **both Java Resident and Java Manager** and continues as technical integration coordinator; **Trần Huỳnh Hồng Phúc** is UI/UX only; **Hà Quang Huy** is Auth; **Nguyễn Đức Hưng** is Core Business Logic (state machine, deadline, history rules and tests). This supersedes earlier suggestions to assign Manager Java to Hưng or incident Repository/Rules to Hà. No additional module was allocated to those members.
+
+**Decision status:** `PROPOSED_V2` for Manager Java ownership; **DEC-010 remains `PENDING_DECISION`** until accepted and reviewer identities documented. The previous session's recommendation is not proof of an independent team vote/consent.
+
+**V2 work split:** RES-01..06 + MGR-01..05 (Trần Quốc Huy), AUTH-01..04 (Hà Quang Huy), UI-01..05 (Trần Huỳnh Hồng Phúc), LOG-01..05 (Nguyễn Đức Hưng). Task detail and exact path scope: `GOV_02_ROLE_ALLOCATION_PROPOSAL.md`.
+
+**Still open:** independent human reviewer for Huy-authored Manager/shared PRs; accountable author/reviewer for `data/**`, `common/**`, shared IncidentRepository; separate L3 author, security reviewer and approver for Firestore Rules and privileged MANAGER role provisioning; branch protection. Those duties do **not** auto-follow from the v2 module allocation.
+
+**Approval boundary:** This record does not freeze `DEC-004`–`DEC-009` or the design contracts in PR #8, and does not authorize live incident writes/Rules deployment.
+
 ## New decision record
 
 ```text
