@@ -1,12 +1,14 @@
 # Android architecture and integration contracts
 
-**Status:** `PROPOSED` based on current Java/XML starter and `docs/ai-review/02_ket_qua_gemini_doi_chieu.md`; not a mandate to refactor.
+**Status:** `PROPOSED` architecture; observed implementation baseline refreshed from remote `main` HEAD `bca86b786804068b60646e30aa3e32a8206d8a89` on 2026-10-24. This is not an instruction to refactor.
 
 ## Baseline observed
 
-- Root package `com.example.baocaosuco`; Java source and XML layouts.
-- `MainActivity` and `activity_main.xml` are starter examples, not an auth/navigation implementation.
-- Gradle uses AGP catalog; compile/target SDK 37, min SDK 24, Java compatibility 11 in current main; verify local SDK/Gradle build before feature work.
+- Root package `com.example.baocaosuco`; Java source and XML layouts; Gradle uses an AGP version catalog, compile/target SDK 37, min SDK 24, Java compatibility 11.
+- `MainActivity.java` is now the session/role router; the former `activity_main.xml` still exists in resources but is not used by that Activity's current `onCreate`.
+- Implemented packages: `auth/` (AuthRepository, mock and Firebase implementations, Login/Register), `data/model/User.java`, `resident/ResidentMainActivity.java`, `manager/ManagerMainActivity.java`.
+- `AuthRepositories.USE_FIREBASE = true`. Firebase Auth + Firestore user-profile code and `firestore.rules` for `users` were merged via PR #4; remote source does not prove console deployment or Android E2E success.
+- Proposed `logic/`, `data/repository/`, `common/` incident contracts and incident workflows are **not present** in the inspected `main` tree. Local build status is unverified.
 
 ## Proposed source layout (package-by-feature)
 
