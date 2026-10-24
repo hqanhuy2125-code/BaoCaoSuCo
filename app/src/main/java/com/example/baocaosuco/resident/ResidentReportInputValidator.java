@@ -47,7 +47,7 @@ public final class ResidentReportInputValidator {
             return true;
         }
         for (int i = 0; i < value.length(); i++) {
-            if (!Character.isWhitespace(value.charAt(i))) {
+            if (!Character.isWhitespace(value.charAt(i)) && !Character.isSpaceChar(value.charAt(i))) {
                 return false;
             }
         }
