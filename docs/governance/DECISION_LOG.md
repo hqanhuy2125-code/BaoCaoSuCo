@@ -18,6 +18,15 @@
 | DEC-012 | Image cloud storage/billing | PENDING_DECISION | MVP image optional; avoid Blaze without approved billing owner |
 | DEC-013 | Mobile-specific mechanisms required by instructor | PENDING_DECISION | Confirm minimum number and whether in-app updates qualify |
 
+## 2026-10-24 partial responsibility note — GOV-01 (not a complete DEC-010 approval)
+
+- Session instruction from Trần Quốc Huy (Member 2): takes acting **technical integration lead** role while retaining Resident implementation.
+- Trần Huỳnh Hồng Phúc's responsibility is now **UI/UX only**, not Manager business logic.
+- Existing PR #3/#4 evidence attributes earlier Auth/Firebase implementation to the Member 1 track; future task ownership is not reconfirmed.
+- **Still unassigned:** Manager Java module implementation, shared model/repository code author, security/Firestore rules implementer; Member 4 continuation and all reviewer identities require confirmation.
+- This note records only the stated redistribution. It does **not** authorize changing `DEC-004` through `DEC-009`, nor does it close `DEC-010`; a decision record with owners, reviewers and affected member acceptance is still required.
+- For current module boundaries see `MODULE_OWNERSHIP.md`. Avoid editing another member's Java/XML or shared protected paths without task-specific authorization.
+
 ## New decision record
 
 ```text
