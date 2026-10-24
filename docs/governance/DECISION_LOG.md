@@ -18,6 +18,27 @@
 | DEC-012 | Image cloud storage/billing | PENDING_DECISION | MVP image optional; avoid Blaze without approved billing owner |
 | DEC-013 | Mobile-specific mechanisms required by instructor | PENDING_DECISION | Confirm minimum number and whether in-app updates qualify |
 
+## 2026-10-24 GOV-01: partial assignment recorded; DEC-010 still PENDING_DECISION
+
+**Source:** Direct instruction from Trần Quốc Huy (Member 2) during technical handoff, 24/10/2026. Recorded technical coordination responsibilities are not independent proof of whole-team sign-off or security authorization.
+
+| Responsibility / path | Recorded assignment | Implementation / acceptance status |
+|---|---|---|
+| Technical Lead / Integration Owner; shared-path and contract coordinator | **Trần Quốc Huy** | Session-confirmed coordination. Can inspect/review integrations; every L2/L3 implementation still needs a scoped task and required review. |
+| Resident Java feature | **Trần Quốc Huy** | Module responsibility recorded; individual RES implementation task still required. |
+| UI/UX | **Trần Huỳnh Hồng Phúc** | Session-confirmed UI/UX only; XML paths only under an approved UI task. Not Manager Java owner. |
+| Auth/Firebase past work | Hà Quang Huy | Historical PR #3/#4 merge evidence; future maintainer not yet re-confirmed. |
+| Workflow logic/tests | Nguyễn Đức Hưng | Based on prior allocation; renewal not confirmed. |
+| Java Manager business implementation | **UNASSIGNED** | **BLOCKED** until implementer and reviewer are selected. |
+| `data/**`, `common/**`, shared repositories | **Trần Quốc Huy = integration custodian** | Implementation author and independent reviewer unassigned; no generic write permission. |
+| Firestore Rules, indexes, Manager provisioning, billing | **Trần Quốc Huy = technical coordinator** | L3 implementer/security reviewer/group-lead or delegated approver not yet identified; changes **BLOCKED**. |
+
+**Permission boundaries:** L1 feature-local changes need an authorized task/review; L2 shared code/contracts need integration and affected module review; L3 security/privileges/billing still need explicit accountable approval under `CHANGE_CONTROL.md`. Huy cannot count his own GitHub-authored PR as independent approval. The precise path matrix and blockers are in `MODULE_OWNERSHIP.md`.
+
+**DEC-010 closure gate:** Confirm the Manager Java owner, Member 1/4 continued assignments, independent reviewers for Huy's shared changes, implementation owner for the shared data layer, security/Rules owner and approval chain, and branch-protection decisions. Log evidence/affected-member acceptance before marking `DEC-010` as `CONFIRMED`.
+
+**Other decisions unchanged:** This note is not approval of `DEC-004`–`DEC-009` or `DEC-011`–`DEC-013`. Contract drafts CON-01/02/03 may be reviewed but are **NOT FROZEN** and cannot authorize live incident writes.
+
 ## New decision record
 
 ```text
