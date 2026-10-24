@@ -15,6 +15,8 @@
 
 Document ID = Firebase Auth UID. **Client signup must not self-assign MANAGER**; manager provisioning/review is a separate trusted process.
 
+**Implementation delta (observed 2026-10-24, not v1 approval):** `FirebaseAuthRepository` currently writes a fifth field `uid` (string, equal to the Firebase Auth UID) into `users/{uid}`; `User.java` exposes `uid`, and `firestore.rules` requires the same field on profile creation. The v0 table above omits it. During Data Contract v1 review, confirm the canonical `uid` field and validation, rather than silently editing a proposal into a frozen schema. `createdAt` is sent using `FieldValue.serverTimestamp()` by the implementation.
+
 ### `incidents/{incidentId}`
 
 | Field | Firestore type | Required | Note |
