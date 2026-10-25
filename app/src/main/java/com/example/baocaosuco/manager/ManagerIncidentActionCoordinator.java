@@ -135,11 +135,13 @@ public final class ManagerIncidentActionCoordinator {
         }
 
         final String incidentId = detail.getId();
+        final boolean wasPending;
         synchronized (pendingIncidentIds) {
-            if (!pendingIncidentIds.add(incidentId)) {
-                emit(listener, Outcome.ALREADY_PENDING, "Su co dang duoc xu ly.");
-                return;
-            }
+            wasPending = !pendingIncidentIds.add(incidentId);
+        }
+        if (wasPending) {
+            emit(listener, Outcome.ALREADY_PENDING, "Su co dang duoc xu ly.");
+            return;
         }
 
         final AtomicBoolean completed = new AtomicBoolean(false);
