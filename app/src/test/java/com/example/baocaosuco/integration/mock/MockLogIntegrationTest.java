@@ -192,4 +192,26 @@ public class MockLogIntegrationTest {
                     }
                 });
     }
+
+    @Test public void managerWiringNeedsExplicitMockCreatedAtAndPreservesUnknownDeadline() {
+        Map<String, Long> provided = new HashMap<>();
+        provided.put("mgr-demo-001", 0L); // NORMAL + 72h; the other two remain unknown.
+        AtomicReference<ManagerIncidentOverview.Snapshot> state = new AtomicReference<>();
+        MockManagerOverviewWiring.fromDemo(provided, () -> 259_200_000L).load(state::set);
+        assertEquals(ManagerIncidentOverview.State.CONTENT, state.get().getState());
+        assertEquals(3, state.get().getRows().size());
+        assertEquals(ManagerIncidentOverview.Overdue.NO,
+                state.get().getRows().get(0).getOverdue()); // now == dueAt
+        assertEquals(ManagerIncidentOverview.Overdue.UNKNOWN,
+                state.get().getRows().get(1).getOverdue()); // no invented timestamp
+        MockManagerOverviewWiring.fromDemo(provided, () -> 259_200_001L).load(state::set);
+        assertEquals(ManagerIncidentOverview.Overdue.YES,
+                state.get().getRows().get(0).getOverdue()); // now > dueAt
+        assertEquals(1, state.get().getOverdueCount());
+        assertEquals(1, provided.size()); // no caller map mutation
+        try {
+            MockManagerOverviewWiring.fromDemo(null, () -> 1L);
+            fail("Null timestamps must fail");
+        } catch (IllegalArgumentException expected) { }
+    }
 }
