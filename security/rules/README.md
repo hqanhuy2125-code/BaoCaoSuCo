@@ -4,7 +4,7 @@
 **Baseline:** `main@51f3b16f0008501bc53c3f649587de68879f8627`.
 Tracks [Issue #40](https://github.com/hqanhuy2125-code/BaoCaoSuCo/issues/40), [CON-01 #10](https://github.com/hqanhuy2125-code/BaoCaoSuCo/issues/10), [CON-03 #12](https://github.com/hqanhuy2125-code/BaoCaoSuCo/issues/12).
 
-This standalone Node test package loads **the original tracked root** `../../firestore.rules` with `@firebase/rules-unit-testing` and a **demo-** project ID. It has *no* Firebase service account, app credential, production Firebase project or SDK administrator.
+This standalone Node test package runs TWO isolated suites sequentially: (1) current baseline loaded from the original tracked root Rules, (2) an **explicitly non-production READ-ONLY candidate Rules file** for proposed incident privacy. Each suite independently loads its own rules into the same local emulator; do not run them in parallel. It loads **the original tracked root** `../../firestore.rules` with `@firebase/rules-unit-testing` and a **demo-** project ID. It has *no* Firebase service account, app credential, production Firebase project or SDK administrator.
 
 ## Run on Windows (Node.js 22+ recommended, JDK installed)
 
@@ -34,3 +34,9 @@ npm test
 - Capture test summary, Node/JDK/CLI versions, exit code and (redacted) logs. Never upload secrets or `google-services.json`.
 
 Official references: https://firebase.google.com/docs/rules/unit-tests and https://firebase.google.com/docs/firestore/security/rules-query
+
+## Proposed read-only candidate (not deployed)
+
+The sibling `incidents.readonly.candidate.rules` preserves the existing `users` permissions, allows the authenticated original resident to read their incident/history and an **already trusted preseeded** Manager to read all incidents/history, while denying all client create/update/delete for incidents/history. Its history subcollection is a **CON-01 candidate, not frozen schema**. Fourteen tests cover allowed/denied reads, owner-filtered queries, manager list, history, and fail-closed writes. A green result permits **only a proposed read-only design review**; it is not secured writable transitions and must never be deployed without explicit role/contract approval and full emulator acceptance.
+
+`run-regressions.mjs` executes both suites **sequentially** to avoid loading competing Rules into a shared emulator at the same time.

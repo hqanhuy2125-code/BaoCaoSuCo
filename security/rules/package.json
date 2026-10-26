@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Isolated rules regression against actual checked-in firestore.rules (demo project only)",
   "scripts": {
-    "test": "firebase emulators:exec --config ./firebase.json --project demo-baocaosuco-sec02a --only firestore \"node --test ./baseline.rules.test.mjs\"",
+    "test": "firebase emulators:exec --config ./firebase.json --project demo-baocaosuco-sec02a --only firestore \"node ./run-regressions.mjs\"",
     "test:node": "node --test ./baseline.rules.test.mjs"
   },
   "devDependencies": {
