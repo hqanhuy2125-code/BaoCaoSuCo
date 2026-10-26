@@ -1,0 +1,16 @@
+{
+  "name": "baocaosuco-sec02a-rules-tests",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Isolated rules regression against actual checked-in firestore.rules (demo project only)",
+  "scripts": {
+    "test": "firebase emulators:exec --config ./firebase.json --project demo-baocaosuco-sec02a --only firestore \"node --test ./baseline.rules.test.mjs\"",
+    "test:node": "node --test ./baseline.rules.test.mjs"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "5.0.2",
+    "firebase": "12.19.0",
+    "firebase-tools": "15.34.1"
+  }
+}
