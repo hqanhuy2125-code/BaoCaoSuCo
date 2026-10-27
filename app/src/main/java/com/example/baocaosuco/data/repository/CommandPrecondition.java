@@ -12,6 +12,7 @@ public final class CommandPrecondition {
     public CommandPrecondition(String expectedCanonicalStatus, int expectedRevision, String requestId) {
         IncidentStatus status = IncidentStatusCodec.parseCanonical(expectedCanonicalStatus);
         if (status == null || expectedRevision < 0 ||
+                (status == IncidentStatus.NEW) != (expectedRevision == 0) ||
                 requestId == null || requestId.trim().isEmpty() || requestId.contains("/")) {
             throw new IllegalArgumentException("Invalid command precondition");
         }
