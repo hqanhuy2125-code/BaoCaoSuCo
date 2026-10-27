@@ -14,13 +14,13 @@ jobs:
       - name: Checkout exact final acceptance commit
         uses: actions/checkout@v4
         with:
-          ref: 6c2e245f28e283a1c3ada573cd57faf093baa364
+          ref: 24abed03a5be199aac125cd191dc3b2dcc18f695
           persist-credentials: false
       - name: Assert exact tested commit and clean tree
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "6c2e245f28e283a1c3ada573cd57faf093baa364"
+          test "$(git rev-parse HEAD)" = "24abed03a5be199aac125cd191dc3b2dcc18f695"
           test -z "$(git status --porcelain)"
       - name: Node 24
         uses: actions/setup-node@v4
