@@ -214,9 +214,11 @@ service cloud.firestore {
 
         allow get: if isManager() || (isAuthenticated() &&
             get(rootPath()).data.residentId == request.auth.uid);
-        allow list: if (isManager() && request.query.limit <= 50) ||
+        // CON-01 v1: history is chronological; out-of-order and unbounded reads deny.
+        allow list: if request.query.orderBy['createdAt'] == 'ASC' &&
+            ((isManager() && request.query.limit <= 50) ||
             (isAuthenticated() && request.query.limit <= 50 &&
-              get(rootPath()).data.residentId == request.auth.uid);
+              get(rootPath()).data.residentId == request.auth.uid));
         allow create: if isAuthenticated() && existsAfter(rootPath())
             && (initialEventAllowed(request.resource.data)
              || transitionEventAllowed(request.resource.data));
