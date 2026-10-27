@@ -2,7 +2,8 @@ import { spawnSync } from 'node:child_process';
 const suites = [
   './baseline.rules.test.mjs',
   './readonly.candidate.rules.test.mjs',
-  './writepilot.candidate.rules.test.mjs'
+  './writepilot.candidate.rules.test.mjs',
+  './writepilot.fix01.rules.test.mjs'
 ];
 let status = 0;
 for (const suite of suites) {

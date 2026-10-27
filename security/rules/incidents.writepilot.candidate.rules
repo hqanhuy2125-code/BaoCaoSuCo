@@ -69,8 +69,20 @@ service cloud.firestore {
       function isValidPriority(p) {
         return p == 'URGENT' || p == 'NORMAL' || p == 'LOW';
       }
+      // Rules String.size() and Java codePointCount disagree for non-BMP text.
+      // RE2 dot is tested as a Unicode code-point unit in FIX01 regressions.
+      // Do not replace these code-point checks with size() without a v1.x decision.
       function boundedString(v, max) {
-        return v is string && v.size() > 0 && v.size() <= max;
+        return v is string && v == v.trim() && v != '' &&
+          ((max == 120 && v.matches('(?s).{1,120}'))
+            || (max == 160 && v.matches('(?s).{1,160}'))
+            || (max == 128 && v.matches('(?s).{1,128}'))
+            || (max == 500 && v.matches('(?s).{1,500}'))
+            || (max == 2000 && v.matches('(?s).{1,1000}.{0,1000}')));
+      }
+      // Explicit query contract; verified by FIX01 allowed/denied probes.
+      function hasCanonicalNewestFirstOrder() {
+        return request.query.orderBy['createdAt'] == 'DESC';
       }
       function validIncidentShape(d) {
         return d.keys().hasAll(['residentId', 'title', 'description', 'location',
@@ -160,9 +172,10 @@ service cloud.firestore {
 
       allow get: if isManager() || (isAuthenticated() &&
             resource.data.residentId == request.auth.uid);
-      allow list: if (isManager() && request.query.limit <= 50) ||
+      allow list: if hasCanonicalNewestFirstOrder() &&
+          ((isManager() && request.query.limit <= 50) ||
           (isAuthenticated() && request.query.limit <= 20 &&
-             resource.data.residentId == request.auth.uid);
+             resource.data.residentId == request.auth.uid));
       allow create: if validRootCreate(request.resource.data);
       allow update: if validRootUpdate(resource.data, request.resource.data);
       allow delete: if false;

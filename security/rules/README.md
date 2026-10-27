@@ -67,3 +67,31 @@ This branch adds an isolated third suite `writepilot.candidate.rules.test.mjs` a
 **66 is an anticipated declaration count, NOT a measured PASS.** Use the exact candidate PR SHA, run the tracked `npm install --no-package-lock` then `npm test` inside a separate Windows worktree, and collect actual exit codes and Node test reporters. A failure in the pilot is a design finding; don't delete/relabel tests or weaken security. The pilot covers a subset of replay, stale revision, field tampering and wrong-actor scenarios, but still needs concurrency tests, bad-history cardinality attacks, Unicode/whitespace validation equivalence, query/index checks, Rules access-call budgets and deliberate trusted-backend fallback criteria. Do not mark SEC-02B security PASS without these.
 
 The existing isolated `prepare-emulator.mjs` still copies the exact root production Rules into a gitignored location for the baseline suite. Each suite loads its own Rules through `initializeTestEnvironment` and uses the demo project/localhost. Never run `firebase deploy` or use a production service account or real privileged Manager accounts.
+
+## SEC-02B-FIX01 — layered adversarial parity patch (REVIEW ONLY; NOT TESTED)
+
+This branch is based **directly on PR #48 HEAD `3375428fef3a7d951d2a66395a9ed36600db2d09`**, not `main`. Open a *Draft PR against PR #48's branch* to avoid deploying or prematurely merging the experimental candidate. The root `firestore.rules` remains unchanged.
+
+- `incidents.writepilot.candidate.rules`: require text fields to be trimmed, nonblank and within contract-specific code-point bounds using RE2 whole-string checks. The 2000-character field is expressed as two regex segments because RE2 repetition counts above 1000 are not supported. Enforce `createdAt DESC` on root incident list queries using `request.query.orderBy`.
+- `writepilot.candidate.rules.test.mjs`: preserve the original 28 test declarations; make the 2 originally successful list queries canonical `createdAt DESC` instead of leaving them unsorted.
+- `writepilot.fix01.rules.test.mjs`: **23 NEW test declarations** for trimmed/nonblank title/description/location/handler/note, ASCII/non-BMP Unicode boundaries including 2000/2001 code points, resident/manager DESC/ASC query gates, cross-owner denial, extra-history atomic denial and concurrent revision clash.
+- `run-regressions.mjs`: execute the fourth suite sequentially, without deleting any baseline/read-only/write-pilot suite.
+
+**Expected declared tests: 24 + 14 + 28 + 23 = 89. This is NOT an observed test result.**
+The 19 outside-source Windows probes from Issue #45 were not committed in their original form: FIX01 instead adds reproducible, explicitly numbered overlapping regression tests. Do not describe the new 23 as a bit-for-bit port of the external 19.
+
+### Windows acceptance gate (must run against exact new FIX01 SHA)
+
+```powershell
+cd security/rules
+npm install --no-package-lock
+npm test
+```
+
+Record four *actual* Node test reporter summaries, each exact testcase name, totals/failures/skips, both process exit codes, candidate compilation and original root Rules SHA. The original 66 assertions must still pass; each of the 23 new cases must pass with its stated positive/negative expectation.
+
+**Critical unverified details:** Firestore Rules `request.query.orderBy['createdAt'] == 'DESC'` representation and RE2 code-point behavior **must be established in the actual Emulator**. If the candidate rejects the 120-emoji positive or canonical DESC query, report FAIL; investigate without changing v1 Java limits or disabling tests. `String.trim()` semantics must be checked for non-ASCII whitespace parity before production approval.
+
+**Still OPEN even after 89/89 local PASS:** measured Firestore access-call budget for batches/transactions (including caching), additional adversarial race/replay shapes, real client transaction retries/idempotent success, approved composite indexes/cloud parity, GOV-02 independent security/L3 authorization, real trusted Manager provisioning and Android REPO-02 E2E. The new race probe is a smoke check, not a transaction correctness certificate. The Firestore emulator does not prove live composite index behavior.
+
+**Hard guardrails:** candidate-only, demo Firestore Emulator at 127.0.0.1:8087; no `firebase deploy`, root Rules, Java/LOG/Auth/Manager/Resident edits, credential/profile escalation, or permission bypass. Keep PRs Draft and Issue #45 OPEN until full acceptance.

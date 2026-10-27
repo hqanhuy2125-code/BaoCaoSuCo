@@ -4,7 +4,7 @@ import { assertFails, assertSucceeds, initializeTestEnvironment }
   from '@firebase/rules-unit-testing';
 import {
   collection, deleteDoc, doc, getDoc, getDocs, limit, query, serverTimestamp,
-  setDoc, Timestamp, updateDoc, where, writeBatch
+  setDoc, Timestamp, updateDoc, where, orderBy, writeBatch
 } from 'firebase/firestore';
 
 // SEC-02B pilot: a separate, NON-DEPLOYABLE experimental Rules file.
@@ -186,10 +186,10 @@ test('resident cannot list incidents without owner filter',async()=>{
 });
 test('resident may list only their own incidents with bounded query',async()=>{
   await assertSucceeds(getDocs(query(collection(user('alice'),'incidents'),
-    where('residentId','==','alice'),limit(20))));
+    where('residentId','==','alice'),orderBy('createdAt','desc'),limit(20))));
 });
 test('manager can read bounded incident list',async()=>{
-  await assertSucceeds(getDocs(query(collection(user('mgr'),'incidents'),limit(50))));
+  await assertSucceeds(getDocs(query(collection(user('mgr'),'incidents'),orderBy('createdAt','desc'),limit(50))));
 });
 test('anonymous incident reads are denied',async()=>{
   await assertFails(getDoc(doc(unauth(),'incidents','i1')));
