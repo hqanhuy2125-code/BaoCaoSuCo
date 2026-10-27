@@ -194,3 +194,35 @@ test('manager can read bounded incident list',async()=>{
 test('anonymous incident reads are denied',async()=>{
   await assertFails(getDoc(doc(unauth(),'incidents','i1')));
 });
+
+test('replay of the same event id after success is denied',async()=>{
+  await assertSucceeds(updateWithEvent(user('mgr'),'i1','NEW','ASSIGNED',
+    'ASSIGN','mgr',1,'replay-id','Team A'));
+  await assertFails(updateWithEvent(user('mgr'),'i1','NEW','ASSIGNED',
+    'ASSIGN','mgr',1,'replay-id','Team A'));
+});
+test('CLOSED incident is terminal',async()=>{
+  await seed('i1','CLOSED',4);
+  await assertFails(updateWithEvent(user('mgr'),'i1','CLOSED','IN_PROGRESS',
+    'START_WORK','mgr',5,'illegal-after-close'));
+});
+test('mismatched incident and history transition cannot commit',async()=>{
+  const db=user('mgr'), b=writeBatch(db);
+  b.update(doc(db,'incidents','i1'),{
+    status:'ASSIGNED',assignedTo:'Team A',revision:1,
+    lastEventId:'bad-event',updatedAt:serverTimestamp()
+  });
+  b.set(doc(db,'incidents','i1','history','bad-event'),
+    entry('MARK_COMPLETE','IN_PROGRESS','COMPLETED','mgr',1));
+  await assertFails(b.commit());
+});
+test('initial incident and history event ids must match',async()=>{
+  const db=user('alice'), b=writeBatch(db);
+  b.set(doc(db,'incidents','unlinked-create'),{
+    ...incident('alice','NEW',0,null,'expected-event'),
+    createdAt:serverTimestamp(),updatedAt:serverTimestamp()
+  });
+  b.set(doc(db,'incidents','unlinked-create','history','wrong-event'),
+    entry('CREATE',null,'NEW','alice',0));
+  await assertFails(b.commit());
+});

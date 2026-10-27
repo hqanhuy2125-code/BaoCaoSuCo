@@ -1,11 +1,12 @@
 import { spawnSync } from 'node:child_process';
 const suites = [
   './baseline.rules.test.mjs',
-  './readonly.candidate.rules.test.mjs'
+  './readonly.candidate.rules.test.mjs',
+  './writepilot.candidate.rules.test.mjs'
 ];
 let status = 0;
 for (const suite of suites) {
-  process.stdout.write('\n==== SEC-02A / ' + suite + ' ====\n');
+  process.stdout.write('\n==== SEC-02A+02B / ' + suite + ' ====\n');
   const p = spawnSync(process.execPath, ['--test', suite], { stdio: 'inherit' });
   if (p.error || p.status !== 0) {
     status = 1;
