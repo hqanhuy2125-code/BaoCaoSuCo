@@ -23,10 +23,12 @@ public final class IncidentHistorySnapshot {
         if (this.eventId.contains("/") || time < 0 || action == null || revision < 0) {
             throw new IllegalArgumentException("Invalid history metadata");
         }
-        if (note != null && note.codePointCount(0, note.length()) > 500) {
+        String cleanNote = note == null ? null : note.trim();
+        if (cleanNote != null && cleanNote.isEmpty()) cleanNote = null;
+        if (cleanNote != null && cleanNote.codePointCount(0, cleanNote.length()) > 500) {
             throw new IllegalArgumentException("Note too long");
         }
-        if (!validShape(action, from, to, revision, note)) {
+        if (!validShape(action, from, to, revision, cleanNote)) {
             throw new IllegalArgumentException("Invalid action/status/revision history shape");
         }
         this.action = action;
@@ -34,7 +36,7 @@ public final class IncidentHistorySnapshot {
         this.toStatus = to;
         this.occurredAtMillis = time;
         this.revision = revision;
-        this.note = note;
+        this.note = cleanNote;
     }
 
     private static boolean validShape(HistoryAction action, IncidentStatus from,
