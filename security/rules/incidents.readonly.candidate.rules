@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Kiem tra nguoi dung da xac thuc hop le
+    function isAuthenticated() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    // Kiem tra nguoi dung la chu so huu cua document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Lay du lieu ho so cua nguoi dang thuc hien request
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Kiem tra nguoi dung hien tai co vai tro Quan ly (MANAGER)
+    function isManager() {
+      return isAuthenticated() && getUserData().role == 'MANAGER';
+    }
+
+    // ==========================================
+    // Quy tac bao mat cho Collection 'users'
+    // ==========================================
+    match /users/{userId} {
+      // Cho phep nguoi dung doc ho so cua chinh minh; Quan ly doc duoc tat ca ho so
+      allow read: if isOwner(userId) || isManager();
+
+      // Chi cho phep tao ho so cua chinh minh khi dang ky moi:
+      // 1. Phai dang nhap va userId phai khop voi Auth UID
+      // 2. uid trong data phai khop voi request.auth.uid
+      // 3. email trong data phai khop voi email trong Firebase Auth token
+      // 4. Role bat buoc phai la RESIDENT (khong cho client tu phong lam MANAGER)
+      // 5. Gioi han chinh xac chi chua 5 truong duoc phep
+      allow create: if isOwner(userId)
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.email == request.auth.token.email
+                    && request.resource.data.role == 'RESIDENT'
+                    && request.resource.data.keys().hasAll(['uid', 'email', 'displayName', 'role', 'createdAt'])
+                    && request.resource.data.keys().hasOnly(['uid', 'email', 'displayName', 'role', 'createdAt']);
+
+      // Nguoi dung chi duoc phep cap nhat truong 'displayName',
+      // khong duoc thay doi bat ky truong nao khac (uid, email, role, createdAt)
+      allow update: if isOwner(userId)
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName']);
+
+      // Khong cho phep xoa ho so tu phia client
+      allow delete: if false;
+    }
+
+    // TEST-ONLY proposed READ-ONLY incident access. Not deployable or frozen.
+    // Real incident creates/transitions/history writes are DENIED for every client.
+    match /incidents/{incidentId} {
+      allow get, list: if isManager() ||
+        (isAuthenticated() && resource.data.residentId == request.auth.uid);
+      allow create, update, delete: if false;
+
+      // Candidate A CON-01 history path, NOT finalized.
+      match /history/{eventId} {
+        allow get, list: if isManager() ||
+          (isAuthenticated() &&
+            get(/databases/$(database)/documents/incidents/$(incidentId))
+              .data.residentId == request.auth.uid);
+        allow create, update, delete: if false;
+      }
+    }
+
+    // Mac dinh khoa toan bo cac collection khac (incidents, history, ...)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
