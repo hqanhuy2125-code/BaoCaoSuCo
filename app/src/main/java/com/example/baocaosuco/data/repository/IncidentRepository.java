@@ -7,14 +7,9 @@ import com.example.baocaosuco.data.incident.NewIncidentInput;
 import java.util.List;
 
 /**
- * CON-03 candidate API only. Real implementations MUST obtain FirebaseAuth UID,
- * protected Manager role, trusted timestamps and current incident state from
- * authoritative sources and enforce Firestore Rules + atomic history security.
- *
- * Separate capability interfaces avoid surfacing Manager write commands to
- * Resident UI. A client interface is not an authorization boundary.
- * All callbacks are asynchronous-facing; real Android adapter must dispatch
- * on main thread and report success only after a durable verified commit.
+ * CON-03 technical v1 API: shared Resident/Manager capability interfaces.
+ * Implementation MUST verify Auth UID/protected role and Firestore Rules.
+ * No Firebase implementation or security permission is granted by this API.
  */
 public interface IncidentRepository {
     enum Error {
@@ -26,7 +21,7 @@ public interface IncidentRepository {
         void onError(Error error);
     }
     interface Subscription {
-        /** Idempotent: release listeners when Android UI stops. */
+        /** Release listeners; must be idempotent in implementations. */
         void cancel();
     }
     interface Resident {
@@ -34,16 +29,16 @@ public interface IncidentRepository {
         void listMine(Callback<List<IncidentSnapshot>> callback);
         void getMine(String incidentId, Callback<IncidentSnapshot> callback);
         void historyMine(String incidentId, Callback<List<IncidentHistorySnapshot>> callback);
-        void confirm(String incidentId, String expectedCanonicalStatus,
+        void confirm(String incidentId, CommandPrecondition precondition,
                      boolean resolved, Callback<IncidentSnapshot> callback);
     }
     interface Manager {
         void listAll(Callback<List<IncidentSnapshot>> callback);
-        void assign(String incidentId, String expectedCanonicalStatus, String handler,
+        void assign(String incidentId, CommandPrecondition precondition, String handler,
                     Callback<IncidentSnapshot> callback);
-        void start(String incidentId, String expectedCanonicalStatus,
+        void start(String incidentId, CommandPrecondition precondition,
                    Callback<IncidentSnapshot> callback);
-        void complete(String incidentId, String expectedCanonicalStatus,
+        void complete(String incidentId, CommandPrecondition precondition,
                       Callback<IncidentSnapshot> callback);
     }
 }
