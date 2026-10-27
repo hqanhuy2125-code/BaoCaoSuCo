@@ -65,7 +65,11 @@ public final class IncidentSnapshot {
         this.assignedTo = assignedTo == null ? null :
                 NewIncidentInput.boundedRequired(assignedTo, "assignedTo", 120);
         this.createdAtMillis = createdAtMillis;
-        this.dueAtMillis = IncidentDeadlinePolicy.calculateDueAt(createdAtMillis, priority, MVP_SLA);
+        try {
+            this.dueAtMillis = IncidentDeadlinePolicy.calculateDueAt(createdAtMillis, priority, MVP_SLA);
+        } catch (ArithmeticException overflow) {
+            throw new IllegalArgumentException("Incident deadline overflow", overflow);
+        }
         this.updatedAtMillis = updatedAtMillis;
         this.revision = revision;
         this.lastEventId = NewIncidentInput.required(lastEventId, "lastEventId");
