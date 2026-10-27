@@ -40,3 +40,17 @@ Official references: https://firebase.google.com/docs/rules/unit-tests and https
 The sibling `incidents.readonly.candidate.rules` preserves the existing `users` permissions, allows the authenticated original resident to read their incident/history and an **already trusted preseeded** Manager to read all incidents/history, while denying all client create/update/delete for incidents/history. Its history subcollection is a **CON-01 candidate, not frozen schema**. Fourteen tests cover allowed/denied reads, owner-filtered queries, manager list, history, and fail-closed writes. A green result permits **only a proposed read-only design review**; it is not secured writable transitions and must never be deployed without explicit role/contract approval and full emulator acceptance.
 
 `run-regressions.mjs` executes both suites **sequentially** to avoid loading competing Rules into a shared emulator at the same time.
+
+## Harness portability fix — project-relative Rules (2026-10-27)
+
+The original `npm test` failed before running suites because Firebase CLI treated `../../firestore.rules` as **outside** the test project `security/rules`. The required command now runs `prepare-emulator.mjs` first to copy the **exact bytes** of the tracked root `firestore.rules` to the gitignored `security/rules/.emulator-runtime/firestore.rules`; `firebase.json` refers only to this **within-project** path. Preparation asserts the root's default-deny markers, compares the copy byte-for-byte and outputs its SHA256. The baseline suite continues to read the **original root Rules directly** and the candidate suite continues to read its separate test-only Rules. They are not combined or relaxed.
+
+The staged file is generated only at test execution and stays ignored. No deployment or credential use is involved. Prior validation: old `npm test` FAILED before tests; a temporary external CLI configuration successfully executed all 38 tests, but this is **not** a PASS for the repaired tracked entry point. Re-run at the new PR head:
+
+```powershell
+cd security/rules
+npm install --no-package-lock
+npm test
+```
+
+If the emulator is already bound to port 8087 or a dependency/audit warning requires action, record it separately. Never patch Rules or assert PASS without test reporter output from the exact new SHA.
