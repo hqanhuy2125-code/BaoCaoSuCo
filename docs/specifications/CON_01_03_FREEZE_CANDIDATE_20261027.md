@@ -1,11 +1,11 @@
 # CON-01 + CON-03 — MVP Firestore data / Repository decision candidate
 
-**Status:** `TECHNICAL_DECISION_CANDIDATE / NOT_FROZEN / NOT_DEPLOYABLE`
+**Status:** `DECISIONS_SELECTED_2026-10-27 / TECHNICAL_MVP_V1_LOCKED / FORMAL_GOV02_SIGNOFF_PENDING / NOT_DEPLOYABLE`
 **Prepared:** 2026-10-27
 **Verified baseline:** `main@96eb03c65718087280a98548073e187f83781a5f`
 **Trackers:** [CON-01 #10](https://github.com/hqanhuy2125-code/BaoCaoSuCo/issues/10), [CON-03 #12](https://github.com/hqanhuy2125-code/BaoCaoSuCo/issues/12), [CON-02 #11](https://github.com/hqanhuy2125-code/BaoCaoSuCo/issues/11), [Foundation #40](https://github.com/hqanhuy2125-code/BaoCaoSuCo/issues/40), [Audit #43](https://github.com/hqanhuy2125-code/BaoCaoSuCo/issues/43).
 
-This is **one integrated recommendation** to unblock test-only SEC-02B and REPO-02 architecture. It is **not** a signed replacement for `DATA_CONTRACT.md`, `ARCHITECTURE.md`, `DECISION_LOG.md`, or production `firestore.rules`. The acting technical lead decides domain/API choices; actual privileged Manager provisioning and production Firebase Rules deployment need explicit authorized console control. No technical approval is fabricated on behalf of teammates.
+This document preserves the **proposal-to-decision history**. The acting technical lead selected D01–D10/R01–R08 for the technical MVP on 2026-10-27, with the explicit implementation refinements in canonical `DATA_CONTRACT.md`, `ARCHITECTURE.md`, `FIREBASE_CONTRACT.md` and DEC-015/DEC-016. It does not approve production `firestore.rules`, privilege grants or security deployment. The acting technical lead decides domain/API choices; actual privileged Manager provisioning and production Firebase Rules deployment need explicit authorized console control. No technical approval is fabricated on behalf of teammates.
 
 ## 1. Observed facts versus proposed changes
 
@@ -97,10 +97,16 @@ History `actorId` and `revision` must be server/rules-verified against the incid
 ```text
 Decision owner: Technical integration lead
 Decision date:
-CON-01: D01–D10 ACCEPT / list explicit overrides:
-CON-03: R01–R08 ACCEPT / list explicit overrides:
+CON-01: D01–D10 ACCEPT for technical MVP; v1 canonical docs control exact fields/limits
+CON-03: R01–R08 ACCEPT for technical MVP; CORE-02 source delta still required
 Backend security design: test-only Rules + getAfter pilot, fallback trusted backend if Emulator proof fails
 Production Rules/role provisioning authority: named account owner (not yet granted)
-CON-01/03 business/API status after recorded decision: APPROVED_FOR_TEST_DESIGN / FROZEN only after canonical reviewed PR
+CON-01/03 technical implementation baseline: LOCKED v1; formal GOV-02 independent review pending
 Deployment: NOT AUTHORIZED
 ```
+
+## Technical-lead decision receipt (2026-10-27)
+
+**Decision:** D01–D10 / R01–R08 **selected as an implementation baseline** via direct user instruction to conduct the CON-01/03 Contract Freeze, with the canonical exact schema/API now established in `DATA_CONTRACT.md`, `ARCHITECTURE.md`, `FIREBASE_CONTRACT.md`, DEC-015/DEC-016. The higher-level recommendation tables above are historical proposal records and are superseded where a canonical exact field description differs.
+
+**Not asserted:** external human reviewer, whole-group GOV-02 approval, production L3 Security Rules approval, actual Firestore incident data, provisioned real Manager, deployed index/Rules, write/security Emulator PASS, or device E2E. PR #44 remains an auditable documentation-only change.

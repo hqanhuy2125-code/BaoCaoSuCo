@@ -1,48 +1,39 @@
-# Firebase integration & security contract
+# Firebase integration & security contract — CON-01/CON-03 technical MVP v1
 
-**Status:** `PROPOSED` — user favors shared cloud database for the Android app, but repository still marks Firebase Auth + Firestore `PROPOSED`. Formal team approval and console/project access are required.
+**Current status:** `TECHNICAL_MVP_V1_LOCKED` for schema/interface definitions on 2026-10-27. **`L3_RULES_NOT_APPROVED`, `SEC02B_NOT_TESTED`, `PRODUCTION_INCIDENT_WRITES_DENIED`, `FORMAL_GOV02_SIGNOFF_PENDING`.** Decision details: [DATA_CONTRACT.md](DATA_CONTRACT.md), [ARCHITECTURE.md](ARCHITECTURE.md), `DECISION_LOG.md` DEC-015/DEC-016.
 
-## Selected candidate topology
+## Source-backed current Firebase integration
 
-Java/XML app → Firebase Authentication (email/password) → Cloud Firestore collections `users`, `incidents`, `history` (final path to decide). Firestore SDK can provide live listeners while app is running. No separate server is needed for basic data operations **if** Rules can safely enforce requirements.
+- Android `FirebaseAuthRepository` implements registration/login/current-user/signout and uses Firebase Auth email/password plus `users/{uid}` Firestore profile.
+- Auth registration writes `uid`, `displayName`, `email`, `role=RESIDENT`, `createdAt=serverTimestamp()`. Existing `firestore.rules` allows owner profile reads and displayName-only changes, blocks self-assignment of `MANAGER`, and permits existing trusted Manager profile reads.
+- The root `firestore.rules` has a catch-all `allow read, write: if false` for all other collections including `incidents` and nested history. **Do not deploy `security/rules/incidents.readonly.candidate.rules`**: it is a test-only fixture, not production Rules.
+- Merged CORE-01 + SEC-02A POST-MERGE at `main@96eb03c65718087280a98548073e187f83781a5f`: local Windows 158/158 JUnit PASS, 38/38 Emulator test PASS on original deny-only/read-only candidate test fixtures. That does **not** test authorized incident/history write transactions or prove the deployed cloud Rules version.
+- Firebase Auth + Firestore are technically used by the Android code, but `DEC-004` group administrative approval/Console/ownership remains separately pending. Do not infer Spark/Blaze or runtime cloud deployment from source.
 
-## Source implementation checkpoint — 2026-10-24 (observed, not approval)
+## Selected technical MVP security model (not yet implemented)
 
-- Remote `main` at `bca86b786804068b60646e30aa3e32a8206d8a89` contains Firebase Auth SDK/Firestore dependencies, `AuthRepositories.USE_FIREBASE = true`, and `FirebaseAuthRepository` for email/password login, registration, session/profile lookup and logout.
-- The profile implementation stores `uid`, `displayName`, `email`, `role`, `createdAt` at `users/{uid}`; registration assigns `RESIDENT`. `User.java` and `firestore.rules` agree on the `uid` field, while Data Contract v0 does not yet list it.
-- Root `firestore.rules` contains client read/create/update constraints for `users` and a default-deny catch-all for other collections. **No allow rules for `incidents` or history** are implemented in this snapshot.
-- PR #4 author reports selected Auth/Rules/build tests PASS. This is not independent evidence that rules were deployed, manager provisioning exists or incident operations pass E2E.
-- `DEC-004` is still `PROPOSED` in `DECISION_LOG.md`; reconcile its human approval record separately rather than changing the decision label based solely on source merges.
+- Only authenticated `RESIDENT` who is the `residentId` may create and read their own incident, and only the original owner may `CONFIRM_RESOLVED` / `REPORT_UNRESOLVED` from COMPLETED.
+- Only authenticated, **trusted-provisioned** `MANAGER` may list/read all incidents and perform `NEW→ASSIGNED→IN_PROGRESS→COMPLETED` actions. The handler is a **display-name string**, not another authenticated account or technician role.
+- Only canonical enums accepted. `status`, `assignedTo`, `residentId`, protected times, revision and history writer identity must be validated against the authoritative persisted state. Never accept client role/owner claims.
+- `createdAt`, `updatedAt`, event `createdAt` are trusted server timestamps; deadline is **derived** from persisted creation time plus LOG SLA (4/72/168 hours), never independently user-written in Firestore.
+- Every CREATE and status transition must have a matching **append-only nested history event** in the same atomic unit; event ID acts as the command idempotency key; incident `revision` and `lastEventId` bind the new history event. Event UPDATE/DELETE denied.
+- **Release-critical proof is pending:** Rules `getAfter()` and transactions/batches support reading post-write state for coupled invariants, but do not automatically guarantee safe single-event authorization. SEC-02B must prove all invariants in the local Emulator within Rules access-call limits or redesign to a trusted backend. Never silently omit history or loosen role/owner checks.
+- Strict `users/{uid}` profile behavior is preserved; Manager provisioning is only by a named trusted authorized operator using a separately reviewed process.
 
-## Security gate before production writes
+## Read and index shape
 
-- `request.auth != null` is necessary but **not sufficient**.
-- Resident may create incident only with `residentId = request.auth.uid` and only allowed initial fields/status; list/read own incidents only.
-- Manager may read all incidents and do only approved assignment/progress operations.
-- Only owning resident may confirm completed incident, using only the permitted status changes.
-- Role claims must come from a trusted source. Never let a client set its own `users/{uid}.role` to `MANAGER`. Decide protected user document provisioning or verified custom claims.
-- History must be immutable/append-only to users, and coordinated atomically with status changes. Direct Android-side transitions plus separate history writes are **not** assumed secure until Rules are reviewed and tested.
-- Reject changes to protected fields (`residentId`, original creation time, system-owned due time) and invalid enum strings.
+- Resident query must constrain `residentId == request.auth.uid`, sort by creation descending, and limit to 20.
+- Manager list newest-first limit 50; Java sorting by priority/status/derived dueAt applies **within fetched page only**, not globally.
+- History nested under one incident, chronological order and bounded `limit(50)`. Independent role/owner checks must hold on history reads even when incidentId is guessed.
+- The needed composite index for owner + creation sort must be reviewed; no indexes are deployed or modified in this doc task.
+- Firestore Rules are **not filters**. A query missing an owner constraint must be rejected even if the data currently stored belongs to the caller.
 
-## Integration responsibilities
+## Prerequisites before real Firestore incident access
 
-| Asset | Responsible role | Gate |
-|---|---|---|
-| Firebase project console / members / billing | Group lead | Decide Spark vs Blaze, least-privilege access |
-| Android Firebase setup and SDK | Integration owner | Feature request + PR and build |
-| `google-services.json` handling | Integration owner | Validate package, avoid secrets and service accounts; set team policy |
-| Firestore Rules and indexes | Assigned data/security owner | Emulator tests and approval |
-| Auth flow/role bootstrap | Integration + data owner | Confirm manager provisioning |
-| Repository interface and mapping | Shared code owner | Confirm `DATA_CONTRACT.md` v1 |
+1. CON-01/03 technical contract defined on main; changes thereafter follow versioned review.
+2. Resolve actual L3 accountable security reviewer, Firebase Console permissions and Manager provisioning procedure through GOV-02 [#9](https://github.com/hqanhuy2125-code/BaoCaoSuCo/issues/9).
+3. SEC-02B [#45](https://github.com/hqanhuy2125-code/BaoCaoSuCo/issues/45) candidate Rules Emulator tests: authorized creation and five transitions, unauthorized and cross-owner access, time/field tampering, forged history, stale revision, replay, concurrency, query privacy and access budget. Evidence must have exact SHA, observed test counts and source diff.
+4. REPO-02 scoped Android adapter + transactions, unit/emulator test evidence; only then propose explicit change to root `firestore.rules`, index deployment and production role grants with separate approval.
+5. Validate full signed-in Resident→Manager→Resident report lifecycle on Android Emulator and a physical device. No push, image Storage, billing or real Firebase privileges are implied by a documentation merge.
 
-## Cost/privacy constraints
-
-- Prefer Spark for MVP Auth + Firestore with its usage quotas; monitor reads/writes and avoid unbounded listeners/queries.
-- Cloud Storage for Firebase image uploads require eligible paid-plan billing. Photo uploads remain optional; **do not turn on billing without explicit authorization**.
-- Never store passwords in Firestore; use Firebase Auth. Never publish service account keys or real personal info in fixtures/logs/screenshots.
-
-## Definition of integration ready
-
-[ ] Firebase product/project and billing choice confirmed; [ ] roles bootstrapped securely; [ ] schema and indexes accepted; [ ] rules reviewed; [ ] emulator rules tests PASS; [ ] Android smoke login/create/read/assign/confirm PASS; [ ] cross-role privacy tests PASS; [ ] usage and error/connection-handling documented.
-
-This contract does not supply **approved runnable rules for `incidents`/history** because their collection shape and authorization mechanism are not yet confirmed. The repository does contain an implemented `firestore.rules` for `users`; its deployment state remains unverified. No insecure permissive incident rules are authorized.
+**No production Rules, Auth, user profile, credential, index, Java or UI files are modified by PR #44.**
