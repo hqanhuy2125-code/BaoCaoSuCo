@@ -41,7 +41,7 @@ History queries must specify `createdAt ASC` and `limit(50)`. Deterministic tie-
 
 Current governance files under `docs/governance/` record:
 - **Trần Quốc Huy:** integration custodian, Resident Java module coordinator. This is **not** independent approval or Firebase Console L3 authority.
-- **Java Manager implementer/reviewer:** UNASSIGNED.
+- **Java Manager implementer:** Trần Quốc Huy is named in the **V2 PROPOSED** ownership update ([GOV-02 comment](https://github.com/hqanhuy2125-code/BaoCaoSuCo/issues/9#issuecomment-6382986869)); formal team acceptance and an independent reviewer are **PENDING**, so this is not an approved task assignment.
 - **`data/**` shared-code implementer + independent reviewer:** UNASSIGNED.
 - **Firestore candidate Rules/indexes implementer:** work exists under PR #48/#49, but formal L3 author authorization and independent security reviewer: UNASSIGNED.
 - **Firebase Console project/database owner:** UNASSIGNED (no verified owner/account permission evidence).
