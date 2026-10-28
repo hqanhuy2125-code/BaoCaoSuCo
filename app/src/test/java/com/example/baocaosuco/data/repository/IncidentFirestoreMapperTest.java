@@ -123,4 +123,54 @@ public class IncidentFirestoreMapperTest {
         nonStringNote.put("note", 123);
         invalid(() -> IncidentFirestoreMapper.history("evt-1", "case-1", nonStringNote));
     }
+
+    @Test public void paddedTitleAndDescriptionAreNotSilentlyNormalized() {
+        Map<String, Object> paddedTitle = incident();
+        paddedTitle.put("title", "  No light");
+        invalid(() -> IncidentFirestoreMapper.incident("case-1", paddedTitle));
+
+        Map<String, Object> paddedDescription = incident();
+        paddedDescription.put("description", "Corridor light is out ");
+        invalid(() -> IncidentFirestoreMapper.incident("case-1", paddedDescription));
+    }
+
+    @Test public void paddedAssigneeAndLocationAreRejected() {
+        Map<String, Object> paddedAssignee = incident();
+        paddedAssignee.put("status", "ASSIGNED");
+        paddedAssignee.put("revision", 1L);
+        paddedAssignee.put("assignedTo", " Team A ");
+        invalid(() -> IncidentFirestoreMapper.incident("case-1", paddedAssignee));
+
+        Map<String, Object> paddedLocation = incident();
+        paddedLocation.put("location", "  Block A");
+        invalid(() -> IncidentFirestoreMapper.incident("case-1", paddedLocation));
+    }
+
+    @Test public void incidentEventIdMustRespectRulesBound() {
+        Map<String, Object> tooLong = incident();
+        tooLong.put("lastEventId", "a".repeat(129));
+        invalid(() -> IncidentFirestoreMapper.incident("case-1", tooLong));
+
+        Map<String, Object> padded = incident();
+        padded.put("lastEventId", " event-1 ");
+        invalid(() -> IncidentFirestoreMapper.incident("case-1", padded));
+    }
+
+    @Test public void historyNoteMustBeCanonicalWhenPresent() {
+        Map<String, Object> paddedNote = history();
+        paddedNote.put("note", "  verified ");
+        invalid(() -> IncidentFirestoreMapper.history("evt-1", "case-1", paddedNote));
+
+        Map<String, Object> blankNote = history();
+        blankNote.put("note", "");
+        invalid(() -> IncidentFirestoreMapper.history("evt-1", "case-1", blankNote));
+
+        Map<String, Object> validNote = history();
+        validNote.put("action", "ASSIGN");
+        validNote.put("fromStatus", "NEW");
+        validNote.put("toStatus", "ASSIGNED");
+        validNote.put("revision", 1L);
+        validNote.put("note", "Checked");
+        assertEquals("Checked", IncidentFirestoreMapper.history("evt-1", "case-1", validNote).getNote());
+    }
 }
