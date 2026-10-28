@@ -48,13 +48,19 @@ public final class ResidentIncidentCoordinator {
     private int begin() {
         if (!active || pending) return -1;
         pending = true;
-        int current = ++generation;
+        int token = ++generation;
         view.onBusy(true);
-        return current;
+        // onBusy may synchronously close the screen; do not start work then.
+        return current(token) ? token : -1;
     }
 
     private boolean current(int token) {
         return active && pending && generation == token;
+    }
+
+    private boolean canDeliver(int token) {
+        // A View may synchronously close or start a new request on onBusy(false).
+        return active && !pending && generation == token;
     }
 
     private void finish(int token) {
@@ -66,7 +72,8 @@ public final class ResidentIncidentCoordinator {
     private void failure(int token, IncidentRepository.Error error) {
         if (!current(token)) return;
         finish(token);
-        view.onError(error == null ? IncidentRepository.Error.UNKNOWN : error);
+        if (canDeliver(token)) view.onError(
+                error == null ? IncidentRepository.Error.UNKNOWN : error);
     }
 
     private void invalid() {
@@ -82,7 +89,7 @@ public final class ResidentIncidentCoordinator {
                 if (data == null) { failure(token, IncidentRepository.Error.UNKNOWN); return; }
                 List<IncidentSnapshot> snapshot = Collections.unmodifiableList(new ArrayList<>(data));
                 finish(token);
-                view.onList(snapshot); // Repository already applies own-UID and 20-item limit.
+                if (canDeliver(token)) view.onList(snapshot); // Repository already applies own-UID and 20-item limit.
             }
             @Override public void onError(IncidentRepository.Error error) { failure(token, error); }
         });
@@ -112,7 +119,7 @@ public final class ResidentIncidentCoordinator {
                         List<IncidentHistorySnapshot> snapshot =
                                 Collections.unmodifiableList(new ArrayList<>(history));
                         finish(token);
-                        view.onDetail(incident, snapshot);
+                        if (canDeliver(token)) view.onDetail(incident, snapshot);
                     }
                     @Override public void onError(IncidentRepository.Error error) { failure(token, error); }
                 });
@@ -138,7 +145,7 @@ public final class ResidentIncidentCoordinator {
                 if (!current(token)) return;
                 if (incident == null) { failure(token, IncidentRepository.Error.UNKNOWN); return; }
                 finish(token);
-                view.onSaved(incident);
+                if (canDeliver(token)) view.onSaved(incident);
             }
             @Override public void onError(IncidentRepository.Error error) { failure(token, error); }
         });
@@ -161,7 +168,7 @@ public final class ResidentIncidentCoordinator {
                 if (!current(token)) return;
                 if (incident == null) { failure(token, IncidentRepository.Error.UNKNOWN); return; }
                 finish(token);
-                view.onSaved(incident);
+                if (canDeliver(token)) view.onSaved(incident);
             }
             @Override public void onError(IncidentRepository.Error error) { failure(token, error); }
         });
