@@ -7,10 +7,10 @@
 ## Actual implementation
 - `resident/ResidentForegroundStatusRefresh.java`: injects the **existing, real `IncidentRepository.Resident`** (CON-03) with `listMine()`; no direct Firebase SDK access, Auth bypass, new Repository API or Firestore writes. The existing Repository checks caller role, current UID, server query limits, Firestore Rules and callback session.
 - `resident/AndroidResidentRefreshScheduler.java`: Android main-thread `Handler` implementation of delayed calls and callback removal.
-- `ResidentForegroundStatusRefreshTest.java`: pure JVM fake Repo/scheduler tests; no network or Firebase credentials.
+- `ResidentForegroundStatusRefreshTest.java`: **16** pure JVM fake Repo/scheduler tests, including sign-out/role denial clearing private rows and stale revision protection; no network or Firebase credentials.
 - `onStart()`: immediate baseline fetch, schedule **one bounded read every 60 seconds while visible**; after initial baseline, status changes with **strictly higher revision** trigger `View.onStatusChanged(incident)`. Also emits `onPage` when the server page changes.
 - `onStop()`: removes scheduled checks, discards cached private page and invalidates delayed callbacks; `close()` is idempotent and prevents restart after logout/destroy.
-- Never automatically retries incident writes. Network read failure is displayed via `onError`; next scheduled read may recover. No credential/token, UI/role change or cloud deployment.
+- On `AUTH_REQUIRED` or `PERMISSION_DENIED`, stops polling, publishes an empty page to clear any previously visible private data, and reports the error to the Activity so that the UI can leave the restricted screen. A stale or contradictory revision is rejected as `CONFLICT`; next scheduled poll may recover. Never automatically retries incident writes. A NETWORK read failure is displayed via `onError`; next scheduled read may recover. No credential/token, UI/role change or cloud deployment.
 - **Limitations:** only the latest **20** incidents from canonical server query; no guarantee of immediate update (up to ~60s after the first sample plus network), no background updates, changes that occur and revert between polls may not be observed. Revisions/status read from server, not from LOG mock sources.
 
 ## Java Activity binding after Phúc XML PR
