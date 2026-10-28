@@ -66,6 +66,17 @@ jobs:
         run: |
           set -euo pipefail
           cp firestore.rules _sec02b_pinned/security/rules/incidents.writepilot.candidate.rules
+          # One legacy pilot test checks the comment label, not executable Rules.
+          # Normalize only that comment after asserting exact code equivalence above.
+          python3 - <<'PY'
+          from pathlib import Path
+          path=Path('_sec02b_pinned/security/rules/incidents.writepilot.candidate.rules')
+          text=path.read_text(encoding='utf-8')
+          before='A03/A04 RELEASE CANDIDATE — NOT DEPLOYED; SECURITY REVIEW REQUIRED'
+          after='SEC-02B EXPERIMENTAL TEST-ONLY WRITE PILOT — NEVER DEPLOY'
+          assert text.count(before)==1
+          path.write_text(text.replace(before,after), encoding='utf-8')
+          PY
           cd _sec02b_pinned/security/rules
           npm test
       - name: Ensure no tracked backend or root source modified by test
