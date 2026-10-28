@@ -155,6 +155,44 @@ public class ManagerIncidentCoordinatorTest {
         assertFalse(c.loadList());
     }
 
+    @Test public void closeDuringBusyStartNeverContactsRepository() {
+        Api api = new Api();
+        final ManagerIncidentCoordinator[] owner = new ManagerIncidentCoordinator[1];
+        final List<IncidentSnapshot>[] delivered = new List[1];
+        ManagerIncidentCoordinator.View view = new ManagerIncidentCoordinator.View() {
+            @Override public void onBusy(boolean busy) {
+                if (busy == true) owner[0].close();
+            }
+            @Override public void onRows(List<IncidentSnapshot> rows) { delivered[0] = rows; }
+            @Override public void onDetail(IncidentSnapshot item) {}
+            @Override public void onSaved(IncidentSnapshot item) {}
+            @Override public void onError(IncidentRepository.Error error) {}
+        };
+        owner[0] = new ManagerIncidentCoordinator(api, view);
+        assertFalse(owner[0].loadList());
+        assertNull(api.list);
+    }
+
+    @Test public void closeDuringBusyEndDropsLateResult() {
+        Api api = new Api();
+        final ManagerIncidentCoordinator[] owner = new ManagerIncidentCoordinator[1];
+        final List<IncidentSnapshot>[] delivered = new List[1];
+        ManagerIncidentCoordinator.View view = new ManagerIncidentCoordinator.View() {
+            @Override public void onBusy(boolean busy) {
+                if (busy == false) owner[0].close();
+            }
+            @Override public void onRows(List<IncidentSnapshot> rows) { delivered[0] = rows; }
+            @Override public void onDetail(IncidentSnapshot item) {}
+            @Override public void onSaved(IncidentSnapshot item) {}
+            @Override public void onError(IncidentRepository.Error error) {}
+        };
+        owner[0] = new ManagerIncidentCoordinator(api, view);
+        assertTrue(owner[0].loadList());
+        api.list.onSuccess(
+                java.util.Collections.singletonList(item("one", "NORMAL", IncidentStatus.NEW, 0, 1000)));
+        assertNull(delivered[0]);
+    }
+
     @Test public void repositoryErrorEndsPendingAndAllowsRetry() {
         Api api = new Api(); Screen view = new Screen();
         ManagerIncidentCoordinator c = new ManagerIncidentCoordinator(api, view);
