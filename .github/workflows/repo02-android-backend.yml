@@ -27,10 +27,14 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - name: Android SDK
-        uses: android-actions/setup-android@v3
-      - name: Install SDK platform
-        run: sdkmanager --install "platforms;android-37" "build-tools;37.0.0"
+      - name: Install Android platform from hosted runner SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "ANDROID_HOME=${ANDROID_HOME:-unset}"
+          test -d "${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          command -v sdkmanager
+          sdkmanager --install "platforms;android-37" "build-tools;37.0.0"
       - name: Ephemeral dummy Firebase config for offline compile only
         shell: bash
         run: |
