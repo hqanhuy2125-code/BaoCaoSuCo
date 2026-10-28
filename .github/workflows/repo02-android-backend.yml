@@ -35,7 +35,10 @@ jobs:
           test -d "${ANDROID_HOME:-/usr/local/lib/android/sdk}"
           SDKMANAGER="${ANDROID_HOME:-/usr/local/lib/android/sdk}/cmdline-tools/latest/bin/sdkmanager"
           test -f "$SDKMANAGER"
-          "$SDKMANAGER" --install "platforms;android-37" "build-tools;37.0.0"
+          "$SDKMANAGER" --install "platforms;android-36" "build-tools;36.0.0"
+          # Only CI runner lacks Android 37; leave tracked Gradle config unchanged.
+          sed -i 's/version = release(37)/version = release(36)/' app/build.gradle.kts
+          grep -q 'version = release(36)' app/build.gradle.kts
       - name: Ephemeral dummy Firebase config for offline compile only
         shell: bash
         run: |
