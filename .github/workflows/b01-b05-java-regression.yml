@@ -14,13 +14,19 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
-      - name: Checkout exact PR head
+      - name: Checkout GitHub PR merge preview against latest main
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Verify source SHA
-        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - name: Verify checked out merge preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.sha }}"
+          # pull_request GITHUB_SHA points to the synthetic merge commit of base + head.
+          test "$(git rev-list --parents -n 1 HEAD | wc -w)" -eq 3
+          echo "Merge preview: $(git rev-parse HEAD)"
+          echo "Head PR: ${{ github.event.pull_request.head.sha }}"
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
