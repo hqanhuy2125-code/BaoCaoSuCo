@@ -220,6 +220,58 @@ public class ResidentForegroundStatusRefreshTest {
         f.repo.succeed(1, item("i1", IncidentStatus.NEW, 0));
     }
 
+    @Test public void authRequiredClearsVisiblePrivateRowsAndStopsPolling() {
+        Fixture f = new Fixture();
+        f.refresh.onStart();
+        f.repo.succeed(0, item("private-old-owner", IncidentStatus.NEW, 0));
+        f.clock.tick();
+        f.repo.calls.get(1).onError(IncidentRepository.Error.AUTH_REQUIRED);
+        assertEquals(2, f.view.pages.size());
+        assertTrue("Old private rows must be hidden", f.view.pages.get(1).isEmpty());
+        assertEquals(IncidentRepository.Error.AUTH_REQUIRED, f.view.errors.get(0));
+        assertNull("No further reads while role is invalid", f.clock.next);
+        assertFalse(f.refresh.refresh());
+        assertEquals(2, f.repo.calls.size());
+    }
+
+    @Test public void permissionDeniedAlsoDetachesAndErasesPrivatePage() {
+        Fixture f = new Fixture();
+        f.refresh.onStart();
+        f.repo.succeed(0, item("private", IncidentStatus.NEW, 0));
+        f.clock.tick();
+        f.repo.calls.get(1).onError(IncidentRepository.Error.PERMISSION_DENIED);
+        assertTrue(f.view.pages.get(f.view.pages.size() - 1).isEmpty());
+        assertEquals(IncidentRepository.Error.PERMISSION_DENIED, f.view.errors.get(0));
+        assertNull(f.clock.next);
+    }
+
+    @Test public void staleServerRevisionCannotOverwriteFreshPageOrEmitWrongNotice() {
+        Fixture f = new Fixture();
+        f.refresh.onStart();
+        f.repo.succeed(0, item("i1", IncidentStatus.ASSIGNED, 2));
+        f.clock.tick();
+        f.repo.succeed(1, item("i1", IncidentStatus.NEW, 0));
+        assertEquals(IncidentRepository.Error.CONFLICT, f.view.errors.get(0));
+        assertEquals(1, f.view.pages.size());
+        assertTrue(f.view.changes.isEmpty());
+        f.clock.tick();
+        f.repo.succeed(2, item("i1", IncidentStatus.IN_PROGRESS, 3));
+        assertEquals(2, f.view.pages.size());
+        assertEquals(1, f.view.changes.size());
+        assertEquals("IN_PROGRESS", f.view.changes.get(0).getStatusCode());
+    }
+
+    @Test public void sameRevisionWithContradictoryStatusIsRejected() {
+        Fixture f = new Fixture();
+        f.refresh.onStart();
+        f.repo.succeed(0, item("i1", IncidentStatus.ASSIGNED, 2));
+        f.clock.tick();
+        f.repo.succeed(1, item("i1", IncidentStatus.IN_PROGRESS, 2));
+        assertEquals(IncidentRepository.Error.CONFLICT, f.view.errors.get(0));
+        assertEquals(1, f.view.pages.size());
+        assertTrue(f.view.changes.isEmpty());
+    }
+
     @Test public void newlyArrivedItemsAreNotFalselyAnnouncedAsTransitions() {
         Fixture f = new Fixture();
         f.refresh.onStart();
