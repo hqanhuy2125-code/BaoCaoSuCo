@@ -301,8 +301,12 @@ public final class FirebaseIncidentRepository {
         final DocumentReference eventRef;
         try {
             require(precondition, "precondition");
+            String requestId = precondition.getRequestId();
+            if (requestId.codePointCount(0, requestId.length()) > 128) {
+                throw new IllegalArgumentException("Request ID exceeds CON-01 limit");
+            }
             parent = root(incidentId);
-            eventRef = parent.collection(HISTORY).document(precondition.getRequestId());
+            eventRef = parent.collection(HISTORY).document(requestId);
         } catch (IllegalArgumentException invalid) {
             error(callback, IncidentRepository.Error.VALIDATION);
             return;
