@@ -1,0 +1,96 @@
+name: REPO-02 Android backend regression
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/repo02-android-backend.yml'
+      - 'app/src/main/java/com/example/baocaosuco/data/**'
+      - 'app/src/test/java/com/example/baocaosuco/data/**'
+  pull_request:
+    paths:
+      - '.github/workflows/repo02-android-backend.yml'
+      - 'app/src/main/java/com/example/baocaosuco/data/**'
+      - 'app/src/test/java/com/example/baocaosuco/data/**'
+permissions:
+  contents: read
+jobs:
+  android-backend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout exact event commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify checked out event commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install Android platform from hosted runner SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "ANDROID_HOME=${ANDROID_HOME:-unset}"
+          test -d "${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMANAGER="${ANDROID_HOME:-/usr/local/lib/android/sdk}/cmdline-tools/latest/bin/sdkmanager"
+          test -f "$SDKMANAGER"
+          "$SDKMANAGER" --install "platforms;android-36" "build-tools;36.0.0"
+          # Only CI runner lacks Android 37; leave tracked Gradle config unchanged.
+          sed -i 's/version = release(37)/version = release(36)/' app/build.gradle.kts
+          grep -q 'version = release(36)' app/build.gradle.kts
+      - name: Ephemeral dummy Firebase config for offline compile only
+        shell: bash
+        run: |
+          cat > app/google-services.json <<'JSON'
+          {
+            "project_info": {
+              "project_number": "1234567890",
+              "project_id": "demo-repo02-offline-build",
+              "storage_bucket": "demo-repo02-offline-build.appspot.com"
+            },
+            "client": [{
+              "client_info": {
+                "mobilesdk_app_id": "1:1234567890:android:1234567890abcdef123456",
+                "android_client_info": {"package_name": "com.example.baocaosuco"}
+              },
+              "api_key": [{"current_key": "not-a-real-firebase-api-key"}]
+            }],
+            "configuration_version": "1"
+          }
+          JSON
+      - name: Gradle test and APK
+        shell: bash
+        run: |
+          bash ./gradlew :app:testDebugUnitTest :app:assembleDebug --stacktrace --no-daemon --console=plain
+      - name: Report JUnit XML and assert no skipped
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          paths = list(Path("app/build/test-results/testDebugUnitTest").rglob("TEST-*.xml"))
+          assert paths, "No JUnit XML found"
+          tests = fail = errors = skip = 0
+          for p in paths:
+              root = ET.parse(p).getroot()
+              tests += int(root.attrib.get("tests", 0))
+              fail += int(root.attrib.get("failures", 0))
+              errors += int(root.attrib.get("errors", 0))
+              skip += int(root.attrib.get("skipped", 0))
+          print(f"JUnit XML: suites={len(paths)} tests={tests} failures={fail} errors={errors} skipped={skip}")
+          assert fail == errors == skip == 0
+          assert any("IncidentFirestoreMapperTest" in p.name for p in paths), "New mapper suite absent"
+          assert tests >= 179, f"Expected 171 CORE-02 + 8 mapper, saw {tests}"
+          PY
+      - name: Check no tracked code changed
+        if: always()
+        shell: bash
+        run: |
+          git diff --exit-code -- app/src/main app/src/test firestore.rules
