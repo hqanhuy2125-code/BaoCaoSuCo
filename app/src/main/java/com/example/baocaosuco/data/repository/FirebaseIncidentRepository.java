@@ -349,12 +349,12 @@ public final class FirebaseIncidentRepository {
         }
 
         @Override public void getMine(String id, IncidentRepository.Callback<IncidentSnapshot> callback) {
-            withActor(ActorRole.RESIDENT, callback, actor -> getMine(actor, id, callback));
+            withActor(ActorRole.RESIDENT, callback, actor -> FirebaseIncidentRepository.this.getMine(actor, id, callback));
         }
 
         @Override public void historyMine(String id,
                             IncidentRepository.Callback<List<IncidentHistorySnapshot>> callback) {
-            withActor(ActorRole.RESIDENT, callback, actor -> historyMine(actor, id, callback));
+            withActor(ActorRole.RESIDENT, callback, actor -> FirebaseIncidentRepository.this.historyMine(actor, id, callback));
         }
 
         @Override public void confirm(String id, CommandPrecondition expected, boolean resolved,
