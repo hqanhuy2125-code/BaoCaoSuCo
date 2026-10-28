@@ -78,7 +78,7 @@ jobs:
           print(f'JUnit XML: {len(paths)} suites, tests={t}, failures={f}, errors={e}, skipped={s}')
           assert f == e == s == 0
           assert any('ResidentForegroundStatusRefreshTest' in p.name for p in paths), 'B06 suite missing'
-          assert t >= 195, 'Expected baseline 183 + 12 B06 tests'
+          assert t >= 199, 'Expected baseline 183 + 16 B06 tests'
           PY
       - name: Assert no source files were altered by build
         if: always()
