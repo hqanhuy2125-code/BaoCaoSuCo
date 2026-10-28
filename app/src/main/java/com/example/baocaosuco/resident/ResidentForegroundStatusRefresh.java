@@ -130,10 +130,15 @@ public final class ResidentForegroundStatusRefresh {
                 // Do not silently notify on the first load or on unchanged polls.
                 if (!hasPage || !samePage(previous, latest)) {
                     view.onPage(Collections.unmodifiableList(page));
+                    // A View callback may navigate away or sign out synchronously.
+                    if (!accept(epoch)) return;
                 }
                 previous = latest;
                 hasPage = true;
-                for (IncidentSnapshot item : changed) view.onStatusChanged(item);
+                for (IncidentSnapshot item : changed) {
+                    if (!accept(epoch)) return;
+                    view.onStatusChanged(item);
+                }
             }
 
             @Override public void onError(IncidentRepository.Error error) {
