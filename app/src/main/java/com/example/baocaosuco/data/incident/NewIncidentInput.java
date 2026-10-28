@@ -1,6 +1,6 @@
 package com.example.baocaosuco.data.incident;
 
-/** Candidate CON-01 input: caller must not supply UID, status, timestamps or assignee. */
+/** Immutable CON-01 v1 input. Caller supplies no UID, role, status or timestamps. */
 public final class NewIncidentInput {
     private final String title;
     private final String description;
@@ -8,9 +8,9 @@ public final class NewIncidentInput {
     private final String priority;
 
     public NewIncidentInput(String title, String description, String location, String priority) {
-        this.title = required(title, "title");
-        this.description = required(description, "description");
-        this.location = required(location, "location");
+        this.title = boundedRequired(title, "title", 120);
+        this.description = boundedRequired(description, "description", 2000);
+        this.location = boundedRequired(location, "location", 160);
         if (!"URGENT".equals(priority) && !"NORMAL".equals(priority) && !"LOW".equals(priority)) {
             throw new IllegalArgumentException("Unsupported canonical priority");
         }
@@ -22,6 +22,14 @@ public final class NewIncidentInput {
             throw new IllegalArgumentException("Missing " + field);
         }
         return value.trim();
+    }
+
+    static String boundedRequired(String value, String field, int maxCharacters) {
+        String trimmed = required(value, field);
+        if (trimmed.codePointCount(0, trimmed.length()) > maxCharacters) {
+            throw new IllegalArgumentException("Too long " + field);
+        }
+        return trimmed;
     }
 
     public String getTitle() { return title; }
