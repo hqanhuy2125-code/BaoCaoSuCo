@@ -88,10 +88,9 @@ public class IncidentFirestoreMapperTest {
         Map<String, Object> data = incident();
         data.put("createdAt", "not_timestamp");
         invalid(() -> IncidentFirestoreMapper.incident("case-1", data));
-        data = incident();
-        data.put("revision", 0.5);
-        Map<String, Object> finalData = data;
-        invalid(() -> IncidentFirestoreMapper.incident("case-1", finalData));
+        Map<String, Object> invalidRevision = incident();
+        invalidRevision.put("revision", 0.5);
+        invalid(() -> IncidentFirestoreMapper.incident("case-1", invalidRevision));
     }
 
     @Test public void changedNewStatusMustAdvanceRevision() {
@@ -108,10 +107,9 @@ public class IncidentFirestoreMapperTest {
         Map<String, Object> data = history();
         data.put("action", "FORGE_ROLE");
         invalid(() -> IncidentFirestoreMapper.history("evt-1", "case-1", data));
-        data = history();
-        data.put("secret", "x");
-        Map<String, Object> finalData = data;
-        invalid(() -> IncidentFirestoreMapper.history("evt-1", "case-1", finalData));
+        Map<String, Object> unexpectedFields = history();
+        unexpectedFields.put("secret", "x");
+        invalid(() -> IncidentFirestoreMapper.history("evt-1", "case-1", unexpectedFields));
     }
 
     @Test public void historyRejectsBadTransitionAndNonStringNote() {
@@ -121,9 +119,8 @@ public class IncidentFirestoreMapperTest {
         data.put("toStatus", "CLOSED");
         data.put("revision", 1L);
         invalid(() -> IncidentFirestoreMapper.history("evt-1", "case-1", data));
-        data = history();
-        data.put("note", 123);
-        Map<String, Object> finalData = data;
-        invalid(() -> IncidentFirestoreMapper.history("evt-1", "case-1", finalData));
+        Map<String, Object> nonStringNote = history();
+        nonStringNote.put("note", 123);
+        invalid(() -> IncidentFirestoreMapper.history("evt-1", "case-1", nonStringNote));
     }
 }
