@@ -138,7 +138,7 @@ public final class FirebaseIncidentRepository {
             if (cause instanceof Reject) return ((Reject) cause).error;
             if (cause instanceof FirebaseFirestoreException) {
                 return IncidentFirestoreFailureMapper.classify(
-                        ((FirebaseFirestoreException) cause).getCode());
+                        ((FirebaseFirestoreException) cause).getCode().name());
             }
             cause = cause.getCause();
         }
