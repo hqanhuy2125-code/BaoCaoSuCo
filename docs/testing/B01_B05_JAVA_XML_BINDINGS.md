@@ -1,6 +1,6 @@
 # B01–B05 — Java integration contract for Phúc's XML (pending UI PR)
 
-**Actual baseline:** `main@f2d9418da0957c0b5bb7aeaa0fe0e84000f40e9f`. PR #56 is separately **unmerged** due to GitHub required review by someone other than the last pusher. The live Firebase backend behavior has been tested in PR #56; this PR does not fake backend data.
+**Implementation branch baseline:** `main@f2d9418da0957c0b5bb7aeaa0fe0e84000f40e9f`. **Current verified main:** `36ede21d4c3b67c6af6e9398c3e1a0a4030aa0fc` after **PR #56 MERGED** with eligible reviewer approval. The Firebase live backend smoke tests were run at the #56 tested head; this PR does not fake backend data. PR #58 (A08 error mapping) is a separate review-gated Repository change, not yet merged.
 
 **Ownership:** Huy may edit `resident/**`, `manager/**` Java and their unit tests; **Phúc owns `app/src/main/res/layout/**` and appearance**. Do not independently change `auth/**` (Hà), `logic/**` (Hưng), `data/**` contracts or Firestore Rules/indexes. No XML changes in this Java PR.
 
@@ -34,7 +34,7 @@ Activity/View implementation must call `close()` in `onDestroy()` to ignore late
 Use `onError(IncidentRepository.Error)` to distinguish AUTH_REQUIRED, PERMISSION_DENIED, VALIDATION, NOT_FOUND, CONFLICT, NETWORK, SECURITY_NOT_READY, UNKNOWN. For `CONFLICT`, reload the incident/list and allow user to retry with a **fresh observed snapshot**. Do not silently retry transitions with stale revision. Once `onSaved` returns, refresh the list/detail/history from server; neither coordinator fabricates a history event. After logout or Activity destruction, `close()`.
 
 ### Safe merge order / acceptance gates
-1. PR #56 must receive eligible human approval under GitHub rules, then merge and verify `main`. Do not bypass the 405 protection.
-2. Test this Java coordinator PR on its head; merge only after review and CI. If `main` moves due to #56, update/revalidate the Java PR.
-3. Phúc sends actual XML PR with matching IDs. Huy connects the existing Activity/Java callback implementation in a **separate non-overlapping PR**. Do not edit or duplicate Phúc XML.
+1. PR #56 has **MERGED** to verified `main@36ede21d4c3b67c6af6e9398c3e1a0a4030aa0fc` under GitHub approval. Do not rerun used live-signup fixtures.
+2. PR #58 is separately under review. Once its changes are merged, reconcile this coordinator PR against the updated `main`, re-run CI and obtain eligible human review before merge.
+3. Phúc sends actual XML PR with matching IDs. Huy connects existing Activities to the Java View callbacks in a **separate non-overlapping PR**. Do not edit or duplicate Phúc XML.
 4. B07: on authorized Android physical device with actual `app/google-services.json` (ignored), login Resident, report, Manager login/assign/start/complete, Resident confirm/reopen, check persisted history. Capture Android SDK37 build, screenshots/video and redacted device logs. Not yet tested.
