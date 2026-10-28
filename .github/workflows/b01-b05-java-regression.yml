@@ -82,7 +82,7 @@ jobs:
           assert failures==errors==skips==0
           assert any('ResidentIncidentCoordinatorTest' in p.name for p in paths)
           assert any('ManagerIncidentCoordinatorTest' in p.name for p in paths)
-          assert tests>=198, 'Expected baseline 183 + 15 coordinator tests'
+          assert tests>=202, 'Expected baseline 183 + 19 coordinator tests including teardown guards'
           PY
       - name: Check no tracked runtime/XML changes during CI
         if: always()
