@@ -21,17 +21,21 @@ final class IncidentFirestoreMapper {
         exactShape(fields, "residentId", "title", "description", "location", "priority",
                 "status", "assignedTo", "createdAt", "updatedAt", "revision", "lastEventId");
         NewIncidentInput input = new NewIncidentInput(
-                string(fields, "title"), string(fields, "description"),
-                string(fields, "location"), string(fields, "priority"));
+                strictString(fields, "title", 120),
+                strictString(fields, "description", 2000),
+                strictString(fields, "location", 160), string(fields, "priority"));
         IncidentStatus status = IncidentStatusCodec.parseCanonical(string(fields, "status"));
         if (status == null) throw new IllegalArgumentException("Invalid incident status");
         Object rawHandler = fields.get("assignedTo");
         if (rawHandler != null && !(rawHandler instanceof String)) {
             throw new IllegalArgumentException("Invalid incident assignee");
         }
+        if (rawHandler instanceof String && !rawHandler.equals(((String) rawHandler).trim())) {
+            throw new IllegalArgumentException("Noncanonical incident assignee");
+        }
         return new IncidentSnapshot(id, string(fields, "residentId"), input, status,
                 (String) rawHandler, millis(fields, "createdAt"), millis(fields, "updatedAt"),
-                revision(fields), string(fields, "lastEventId"));
+                revision(fields), strictString(fields, "lastEventId", 128));
     }
 
     static IncidentHistorySnapshot history(String eventId, String incidentId,
@@ -57,6 +61,13 @@ final class IncidentFirestoreMapper {
         if (rawNote != null && !(rawNote instanceof String)) {
             throw new IllegalArgumentException("Invalid history note");
         }
+        if (rawNote instanceof String) {
+            String note = (String) rawNote;
+            if (note.isEmpty() || !note.equals(note.trim())
+                    || note.codePointCount(0, note.length()) > 500) {
+                throw new IllegalArgumentException("Noncanonical history note");
+            }
+        }
         return new IncidentHistorySnapshot(eventId, incidentId, action, from, to,
                 string(fields, "actorId"), millis(fields, "createdAt"),
                 revision(fields), (String) rawNote);
@@ -77,6 +88,15 @@ final class IncidentFirestoreMapper {
         Object value = fields.get(field);
         if (!(value instanceof String)) throw new IllegalArgumentException("Invalid " + field);
         return (String) value;
+    }
+
+    private static String strictString(Map<String, Object> fields, String field, int maxCodePoints) {
+        String value = string(fields, field);
+        if (value.isEmpty() || !value.equals(value.trim())
+                || value.codePointCount(0, value.length()) > maxCodePoints) {
+            throw new IllegalArgumentException("Noncanonical " + field);
+        }
+        return value;
     }
 
     private static long millis(Map<String, Object> fields, String field) {
