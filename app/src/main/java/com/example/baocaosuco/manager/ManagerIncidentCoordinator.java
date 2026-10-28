@@ -52,11 +52,17 @@ public final class ManagerIncidentCoordinator {
         pending = true;
         int token = ++generation;
         view.onBusy(true);
-        return token;
+        // onBusy may synchronously close the screen; do not start work then.
+        return current(token) ? token : -1;
     }
 
     private boolean current(int token) {
         return active && pending && generation == token;
+    }
+
+    private boolean canDeliver(int token) {
+        // A View may synchronously close or start a new request on onBusy(false).
+        return active && !pending && generation == token;
     }
 
     private void finish(int token) {
@@ -68,7 +74,8 @@ public final class ManagerIncidentCoordinator {
     private void failure(int token, IncidentRepository.Error error) {
         if (!current(token)) return;
         finish(token);
-        view.onError(error == null ? IncidentRepository.Error.UNKNOWN : error);
+        if (canDeliver(token)) view.onError(
+                error == null ? IncidentRepository.Error.UNKNOWN : error);
     }
 
     private void invalid(IncidentRepository.Error error) {
@@ -84,7 +91,7 @@ public final class ManagerIncidentCoordinator {
                 if (rows == null) { failure(token, IncidentRepository.Error.UNKNOWN); return; }
                 loaded = Collections.unmodifiableList(new ArrayList<>(rows));
                 finish(token);
-                publishRows();
+                if (canDeliver(token)) publishRows();
             }
             @Override public void onError(IncidentRepository.Error error) { failure(token, error); }
         });
@@ -204,8 +211,8 @@ public final class ManagerIncidentCoordinator {
                 }
                 loaded = Collections.unmodifiableList(next);
                 finish(token);
-                view.onSaved(updated);
-                publishRows();
+                if (canDeliver(token)) view.onSaved(updated);
+                if (canDeliver(token)) publishRows();
             }
             @Override public void onError(IncidentRepository.Error error) { failure(token, error); }
         };
