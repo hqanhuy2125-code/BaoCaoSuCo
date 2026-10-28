@@ -119,6 +119,14 @@ public final class FirebaseIncidentRepository {
         if (callback != null) mainHandler.post(() -> callback.onSuccess(value));
     }
 
+    /** Never deliver a previous account's private snapshot after the active session switches. */
+    private <T> void successForActor(Actor actor, IncidentRepository.Callback<T> callback, T value) {
+        if (callback != null) mainHandler.post(() -> {
+            if (sameAuth(actor.uid)) callback.onSuccess(value);
+            else callback.onError(IncidentRepository.Error.AUTH_REQUIRED);
+        });
+    }
+
     private <T> void error(IncidentRepository.Callback<T> callback, IncidentRepository.Error kind) {
         if (callback != null) mainHandler.post(() -> callback.onError(kind));
     }
@@ -168,11 +176,15 @@ public final class FirebaseIncidentRepository {
         }
     }
 
-    private <T> void readAfterCommit(DocumentReference document,
-                                      IncidentRepository.Callback<IncidentSnapshot> callback) {
+    private void readAfterCommit(Actor actor, DocumentReference document,
+                                 IncidentRepository.Callback<IncidentSnapshot> callback) {
+        if (!sameAuth(actor.uid)) {
+            error(callback, IncidentRepository.Error.AUTH_REQUIRED);
+            return;
+        }
         document.get(Source.SERVER).addOnSuccessListener(doc -> {
             try {
-                success(callback, decode(doc));
+                successForActor(actor, callback, decode(doc));
             } catch (Reject invalid) {
                 error(callback, invalid.error);
             }
@@ -217,7 +229,7 @@ public final class FirebaseIncidentRepository {
         batch.set(incident, data);
         batch.set(incident.collection(HISTORY).document(eventId),
                 event("CREATE", null, "NEW", actor.uid, 0));
-        batch.commit().addOnSuccessListener(ignored -> readAfterCommit(incident, callback))
+        batch.commit().addOnSuccessListener(ignored -> readAfterCommit(actor, incident, callback))
                 .addOnFailureListener(e -> error(callback, firebaseError(e)));
     }
 
@@ -236,7 +248,7 @@ public final class FirebaseIncidentRepository {
                     }
                     results.add(mapped);
                 }
-                success(callback, results);
+                successForActor(actor, callback, results);
             } catch (Reject invalid) {
                 error(callback, invalid.error);
             }
@@ -253,7 +265,7 @@ public final class FirebaseIncidentRepository {
                 IncidentSnapshot mapped = decode(doc);
                 if (!actor.uid.equals(mapped.getResidentId()))
                     throw new Reject(IncidentRepository.Error.PERMISSION_DENIED);
-                success(callback, mapped);
+                successForActor(actor, callback, mapped);
             } catch (Reject invalid) { error(callback, invalid.error); }
         }).addOnFailureListener(e -> error(callback, firebaseError(e)));
     }
@@ -276,7 +288,7 @@ public final class FirebaseIncidentRepository {
                             List<IncidentHistorySnapshot> result = new ArrayList<>();
                             for (DocumentSnapshot item : historyDocs.getDocuments())
                                 result.add(decodeHistory(incidentId, item));
-                            success(callback, result);
+                            successForActor(actor, callback, result);
                         } catch (Reject invalid) { error(callback, invalid.error); }
                     }).addOnFailureListener(e -> error(callback, firebaseError(e)));
         }).addOnFailureListener(e -> error(callback, firebaseError(e)));
@@ -333,7 +345,7 @@ public final class FirebaseIncidentRepository {
             tx.set(eventRef, event(action.name(), current.getStatusCode(),
                     decision.getNextStatus().name(), actor.uid, current.getRevision() + 1));
             return null;
-        }).addOnSuccessListener(ignored -> readAfterCommit(parent, callback))
+        }).addOnSuccessListener(ignored -> readAfterCommit(actor, parent, callback))
                 .addOnFailureListener(e -> error(callback, firebaseError(e)));
     }
 
