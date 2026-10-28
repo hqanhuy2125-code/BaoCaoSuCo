@@ -133,6 +133,44 @@ public class ResidentIncidentCoordinatorTest {
         assertEquals(1, screen.busy.size());
     }
 
+    @Test public void closeDuringBusyStartNeverContactsRepository() {
+        Api api = new Api();
+        final ResidentIncidentCoordinator[] owner = new ResidentIncidentCoordinator[1];
+        final List<IncidentSnapshot>[] delivered = new List[1];
+        ResidentIncidentCoordinator.View view = new ResidentIncidentCoordinator.View() {
+            @Override public void onBusy(boolean busy) {
+                if (busy == true) owner[0].close();
+            }
+            @Override public void onList(List<IncidentSnapshot> rows) { delivered[0] = rows; }
+            @Override public void onDetail(IncidentSnapshot item, List<IncidentHistorySnapshot> events) {}
+            @Override public void onSaved(IncidentSnapshot item) {}
+            @Override public void onError(IncidentRepository.Error error) {}
+        };
+        owner[0] = new ResidentIncidentCoordinator(api, view);
+        assertFalse(owner[0].loadList());
+        assertNull(api.pendingList);
+    }
+
+    @Test public void closeDuringBusyEndDropsLateResult() {
+        Api api = new Api();
+        final ResidentIncidentCoordinator[] owner = new ResidentIncidentCoordinator[1];
+        final List<IncidentSnapshot>[] delivered = new List[1];
+        ResidentIncidentCoordinator.View view = new ResidentIncidentCoordinator.View() {
+            @Override public void onBusy(boolean busy) {
+                if (busy == false) owner[0].close();
+            }
+            @Override public void onList(List<IncidentSnapshot> rows) { delivered[0] = rows; }
+            @Override public void onDetail(IncidentSnapshot item, List<IncidentHistorySnapshot> events) {}
+            @Override public void onSaved(IncidentSnapshot item) {}
+            @Override public void onError(IncidentRepository.Error error) {}
+        };
+        owner[0] = new ResidentIncidentCoordinator(api, view);
+        assertTrue(owner[0].loadList());
+        api.pendingList.onSuccess(
+                java.util.Collections.singletonList(item(IncidentStatus.NEW, 0)));
+        assertNull(delivered[0]);
+    }
+
     @Test public void repositoryErrorIsShownAndBusyEnds() {
         Api api = new Api(); Screen screen = new Screen();
         ResidentIncidentCoordinator c = new ResidentIncidentCoordinator(api, screen);
