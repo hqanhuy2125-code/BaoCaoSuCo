@@ -51,6 +51,181 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ================================================================
+    // A03/A04 RELEASE CANDIDATE — NOT DEPLOYED; SECURITY REVIEW REQUIRED
+    // Canonical CON-01/03 v1 nested history and paired atomic writes.
+    // A passing unit test would NOT substitute for independent L3 review.
+    // ================================================================
+    match /incidents/{incidentId} {
+      function rootPath() {
+        return /databases/$(database)/documents/incidents/$(incidentId);
+      }
+      function eventPath(id) {
+        return /databases/$(database)/documents/incidents/$(incidentId)/history/$(id);
+      }
+      function isResident() {
+        return isAuthenticated() && getUserData().role == 'RESIDENT';
+      }
+      function isValidPriority(p) {
+        return p == 'URGENT' || p == 'NORMAL' || p == 'LOW';
+      }
+      // Rules String.size() and Java codePointCount disagree for non-BMP text.
+      // RE2 dot is tested as a Unicode code-point unit in FIX01 regressions.
+      // Do not replace these code-point checks with size() without a v1.x decision.
+      function boundedString(v, max) {
+        return v is string && v == v.trim() && v != '' &&
+          ((max == 120 && v.matches('(?s).{1,120}'))
+            || (max == 160 && v.matches('(?s).{1,160}'))
+            || (max == 128 && v.matches('(?s).{1,128}'))
+            || (max == 500 && v.matches('(?s).{1,500}'))
+            || (max == 2000 && v.matches('(?s).{1,1000}.{0,1000}')));
+      }
+      // Explicit query contract; verified by FIX01 allowed/denied probes.
+      function hasCanonicalNewestFirstOrder() {
+        return request.query.orderBy['createdAt'] == 'DESC';
+      }
+      function validIncidentShape(d) {
+        return d.keys().hasAll(['residentId', 'title', 'description', 'location',
+          'priority', 'status', 'assignedTo', 'createdAt', 'updatedAt', 'revision', 'lastEventId'])
+          && d.keys().hasOnly(['residentId', 'title', 'description', 'location',
+          'priority', 'status', 'assignedTo', 'createdAt', 'updatedAt', 'revision', 'lastEventId'])
+          && d.residentId is string
+          && boundedString(d.title, 120)
+          && boundedString(d.description, 2000)
+          && boundedString(d.location, 160)
+          && isValidPriority(d.priority)
+          && d.createdAt is timestamp
+          && d.updatedAt is timestamp
+          && d.revision is int && d.revision >= 0
+          && boundedString(d.lastEventId, 128);
+      }
+      function eventShape(e) {
+        return e.keys().hasAll(['action', 'fromStatus', 'toStatus', 'actorId',
+           'createdAt', 'revision', 'note'])
+           && e.keys().hasOnly(['action', 'fromStatus', 'toStatus', 'actorId',
+           'createdAt', 'revision', 'note'])
+           && e.actorId is string && e.createdAt is timestamp
+           && e.revision is int && e.revision >= 0
+           && (e.note == null || boundedString(e.note, 500));
+      }
+      function actionMatch(previous, current, action) {
+        return (previous == 'NEW' && current == 'ASSIGNED' && action == 'ASSIGN')
+          || (previous == 'ASSIGNED' && current == 'IN_PROGRESS' && action == 'START_WORK')
+          || (previous == 'IN_PROGRESS' && current == 'COMPLETED' && action == 'MARK_COMPLETE')
+          || (previous == 'COMPLETED' && current == 'CLOSED' && action == 'CONFIRM_RESOLVED')
+          || (previous == 'COMPLETED' && current == 'IN_PROGRESS' && action == 'REPORT_UNRESOLVED');
+      }
+      function trustedTransition(before, after) {
+        return (before.status == 'NEW' && after.status == 'ASSIGNED'
+                   && isManager() && boundedString(after.assignedTo, 120))
+          || (before.status == 'ASSIGNED' && after.status == 'IN_PROGRESS' && isManager())
+          || (before.status == 'IN_PROGRESS' && after.status == 'COMPLETED' && isManager())
+          || (before.status == 'COMPLETED' && after.status == 'CLOSED'
+                    && isResident() && before.residentId == request.auth.uid)
+          || (before.status == 'COMPLETED' && after.status == 'IN_PROGRESS'
+                    && isResident() && before.residentId == request.auth.uid);
+      }
+      function initialEventMatches(d) {
+        let e = getAfter(eventPath(d.lastEventId)).data;
+        return eventShape(e) && e.action == 'CREATE'
+           && e.fromStatus == null && e.toStatus == 'NEW'
+           && e.actorId == request.auth.uid && e.revision == 0
+           && e.createdAt == request.time && e.note == null;
+      }
+      function transitionEventMatches(before, after) {
+        let e = getAfter(eventPath(after.lastEventId)).data;
+        return eventShape(e) && actionMatch(before.status, after.status, e.action)
+           && e.fromStatus == before.status && e.toStatus == after.status
+           && e.actorId == request.auth.uid
+           && e.revision == after.revision && e.createdAt == request.time;
+      }
+      function validRootCreate(d) {
+        return isResident() && validIncidentShape(d)
+          && d.residentId == request.auth.uid
+          && d.status == 'NEW' && d.assignedTo == null
+          && d.revision == 0 && d.createdAt == request.time
+          && d.updatedAt == request.time
+          && !exists(eventPath(d.lastEventId))
+          && existsAfter(eventPath(d.lastEventId))
+          && initialEventMatches(d);
+      }
+      function validRootUpdate(before, after) {
+        return isAuthenticated() && validIncidentShape(after)
+          && after.residentId == before.residentId
+          && after.title == before.title
+          && after.description == before.description
+          && after.location == before.location
+          && after.priority == before.priority
+          && after.createdAt == before.createdAt
+          && after.revision == before.revision + 1
+          && after.lastEventId != before.lastEventId
+          && after.updatedAt == request.time
+          && (before.status == 'NEW' || after.assignedTo == before.assignedTo)
+          && after.keys().hasAll(before.keys())
+          && after.diff(before).affectedKeys().hasOnly([
+               'status', 'assignedTo', 'updatedAt', 'revision', 'lastEventId'])
+          && trustedTransition(before, after)
+          && !exists(eventPath(after.lastEventId))
+          && existsAfter(eventPath(after.lastEventId))
+          && transitionEventMatches(before, after);
+      }
+
+      allow get: if isManager() || (isAuthenticated() &&
+            resource.data.residentId == request.auth.uid);
+      allow list: if hasCanonicalNewestFirstOrder() &&
+          ((isManager() && request.query.limit <= 50) ||
+          (isAuthenticated() && request.query.limit <= 20 &&
+             resource.data.residentId == request.auth.uid));
+      allow create: if validRootCreate(request.resource.data);
+      allow update: if validRootUpdate(resource.data, request.resource.data);
+      allow delete: if false;
+
+      match /history/{eventId} {
+        function sameActor(e) {
+          return isAuthenticated() && e.actorId == request.auth.uid;
+        }
+        function initialEventAllowed(e) {
+          let after = getAfter(rootPath()).data;
+          return !exists(rootPath()) && eventShape(e)
+            && sameActor(e) && e.action == 'CREATE'
+            && e.fromStatus == null && e.toStatus == 'NEW'
+            && e.revision == 0 && e.note == null
+            && e.createdAt == request.time
+            && after.residentId == request.auth.uid
+            && after.status == 'NEW' && after.revision == 0
+            && after.lastEventId == eventId
+            && after.createdAt == request.time
+            && isResident();
+        }
+        function transitionEventAllowed(e) {
+          let before = get(rootPath()).data;
+          let after = getAfter(rootPath()).data;
+          return exists(rootPath()) && eventShape(e) && sameActor(e)
+            && after.lastEventId == eventId
+            && after.revision == before.revision + 1
+            && e.revision == after.revision
+            && e.fromStatus == before.status
+            && e.toStatus == after.status
+            && e.createdAt == request.time
+            && after.updatedAt == request.time
+            && actionMatch(before.status, after.status, e.action)
+            && trustedTransition(before, after);
+        }
+
+        allow get: if isManager() || (isAuthenticated() &&
+            get(rootPath()).data.residentId == request.auth.uid);
+        // CON-01 v1: history is chronological; out-of-order and unbounded reads deny.
+        allow list: if request.query.orderBy['createdAt'] == 'ASC' &&
+            ((isManager() && request.query.limit <= 50) ||
+            (isAuthenticated() && request.query.limit <= 50 &&
+              get(rootPath()).data.residentId == request.auth.uid));
+        allow create: if isAuthenticated() && existsAfter(rootPath())
+            && (initialEventAllowed(request.resource.data)
+             || transitionEventAllowed(request.resource.data));
+        allow update, delete: if false;
+      }
+    }
+
     // Mac dinh khoa toan bo cac collection khac (incidents, history, ...)
     match /{document=**} {
       allow read, write: if false;
