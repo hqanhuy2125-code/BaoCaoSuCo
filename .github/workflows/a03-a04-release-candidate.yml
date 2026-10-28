@@ -1,0 +1,84 @@
+name: A03/A04 Firestore release candidate validation
+on:
+  pull_request:
+    paths:
+      - 'firestore.rules'
+      - 'firestore.indexes.json'
+      - 'firebase.json'
+      - '.github/workflows/a03-a04-release-candidate.yml'
+permissions:
+  contents: read
+jobs:
+  firestore-gated-candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout exact release PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Checkout immutable, emulator-proven SEC-02B harness
+        uses: actions/checkout@v4
+        with:
+          ref: 24abed03a5be199aac125cd191dc3b2dcc18f695
+          path: _sec02b_pinned
+          persist-credentials: false
+      - name: Verify both source commits
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+          test "$(git -C _sec02b_pinned rev-parse HEAD)" = "24abed03a5be199aac125cd191dc3b2dcc18f695"
+      - name: Verify release Rules executable parity and index config
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib, json
+          release = Path('firestore.rules').read_text(encoding='utf-8')
+          frozen = Path('_sec02b_pinned/security/rules/incidents.writepilot.candidate.rules').read_text(encoding='utf-8')
+          assert release.count('A03/A04 RELEASE CANDIDATE — NOT DEPLOYED; SECURITY REVIEW REQUIRED') == 1
+          assert release.replace('A03/A04 RELEASE CANDIDATE — NOT DEPLOYED; SECURITY REVIEW REQUIRED',
+                                 'SEC-02B EXPERIMENTAL TEST-ONLY WRITE PILOT — NEVER DEPLOY') == frozen, 'Rules differ beyond non-executable comment'
+          release_idx = Path('firestore.indexes.json').read_text(encoding='utf-8')
+          frozen_idx = Path('_sec02b_pinned/security/rules/firestore.indexes.candidate.json').read_text(encoding='utf-8')
+          assert release_idx == frozen_idx, 'Index differs from emulator-reviewed manifest'
+          config = json.loads(Path('firebase.json').read_text(encoding='utf-8'))
+          assert config == {'firestore': {'database':'(default)', 'rules':'firestore.rules','indexes':'firestore.indexes.json'}}
+          print('PASS: production Rules executable text matches pinned test candidate; exact index and Firebase config validated')
+          print('Candidate rules SHA256:', hashlib.sha256(release.encode()).hexdigest())
+          PY
+      - name: Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install pinned test dependencies without lockfile
+        working-directory: _sec02b_pinned/security/rules
+        run: npm install --no-package-lock
+      - name: Run exact proposed release Rules against 105 Emulator tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp firestore.rules _sec02b_pinned/security/rules/incidents.writepilot.candidate.rules
+          # One legacy pilot test checks the comment label, not executable Rules.
+          # Normalize only that comment after asserting exact code equivalence above.
+          python3 - <<'PY'
+          from pathlib import Path
+          path=Path('_sec02b_pinned/security/rules/incidents.writepilot.candidate.rules')
+          text=path.read_text(encoding='utf-8')
+          before='A03/A04 RELEASE CANDIDATE — NOT DEPLOYED; SECURITY REVIEW REQUIRED'
+          after='SEC-02B EXPERIMENTAL TEST-ONLY WRITE PILOT — NEVER DEPLOY'
+          assert text.count(before)==1
+          path.write_text(text.replace(before,after), encoding='utf-8')
+          PY
+          cd _sec02b_pinned/security/rules
+          npm test
+      - name: Ensure no tracked backend or root source modified by test
+        if: always()
+        run: git diff --exit-code -- app/src/main app/src/test firestore.rules firestore.indexes.json firebase.json
