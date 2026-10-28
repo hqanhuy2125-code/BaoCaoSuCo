@@ -120,8 +120,17 @@ public final class ResidentForegroundStatusRefresh {
                 if (hasPage) {
                     for (IncidentSnapshot item : page) {
                         IncidentSnapshot older = previous.get(item.getId());
-                        if (older != null && item.getRevision() > older.getRevision()
-                                && !item.getStatusCode().equals(older.getStatusCode())) {
+                        if (older == null) continue;
+                        // Server snapshots must advance monotonically. Never replace
+                        // a newer observed revision with an older or inconsistent one.
+                        if (item.getRevision() < older.getRevision() ||
+                                (item.getRevision() == older.getRevision() &&
+                                !item.getStatusCode().equals(older.getStatusCode()))) {
+                            view.onError(IncidentRepository.Error.CONFLICT);
+                            return;
+                        }
+                        if (item.getRevision() > older.getRevision() &&
+                                !item.getStatusCode().equals(older.getStatusCode())) {
                             changed.add(item);
                         }
                     }
@@ -144,7 +153,16 @@ public final class ResidentForegroundStatusRefresh {
             @Override public void onError(IncidentRepository.Error error) {
                 if (!accept(epoch)) return;
                 inFlight = false;
-                view.onError(error == null ? IncidentRepository.Error.UNKNOWN : error);
+                IncidentRepository.Error safeError =
+                        error == null ? IncidentRepository.Error.UNKNOWN : error;
+                if (safeError == IncidentRepository.Error.AUTH_REQUIRED ||
+                        safeError == IncidentRepository.Error.PERMISSION_DENIED) {
+                    // A session/role may change while the Activity remains visible.
+                    // Clear any cached private page and disable further polling.
+                    onStop();
+                    view.onPage(Collections.emptyList());
+                }
+                view.onError(safeError);
             }
         });
         return true;
