@@ -1,0 +1,89 @@
+name: B01-B05 Java coordinator regression
+on:
+  pull_request:
+    paths:
+      - 'app/src/main/java/com/example/baocaosuco/resident/**'
+      - 'app/src/main/java/com/example/baocaosuco/manager/**'
+      - 'app/src/test/java/com/example/baocaosuco/resident/**'
+      - 'app/src/test/java/com/example/baocaosuco/manager/**'
+      - '.github/workflows/b01-b05-java-regression.yml'
+permissions:
+  contents: read
+jobs:
+  java-integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout GitHub PR merge preview against latest main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Verify checked out merge preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.sha }}"
+          # pull_request GITHUB_SHA points to the synthetic merge commit of base + head.
+          test "$(git rev-list --parents -n 1 HEAD | wc -w)" -eq 3
+          echo "Merge preview: $(git rev-parse HEAD)"
+          echo "Head PR: ${{ github.event.pull_request.head.sha }}"
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Prepare Android SDK36 on CI only
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          "$SDKMANAGER" --install "platforms;android-36" "build-tools;36.0.0"
+          sed -i 's/version = release(37)/version = release(36)/' app/build.gradle.kts
+          grep -q 'version = release(36)' app/build.gradle.kts
+      - name: Ephemeral offline Firebase config
+        shell: bash
+        run: |
+          cat > app/google-services.json <<'JSON'
+          {
+            "project_info": {
+              "project_number": "1234567890",
+              "project_id": "demo-b01-b05-offline",
+              "storage_bucket": "demo-b01-b05-offline.appspot.com"
+            },
+            "client": [{
+              "client_info": {
+                "mobilesdk_app_id": "1:1234567890:android:1234567890abcdef123456",
+                "android_client_info": {"package_name": "com.example.baocaosuco"}
+              },
+              "api_key": [{"current_key": "dummy-not-live"}]
+            }],
+            "configuration_version": "1"
+          }
+          JSON
+      - name: JUnit and debug APK
+        run: bash ./gradlew :app:testDebugUnitTest :app:assembleDebug --stacktrace --no-daemon --console=plain
+      - name: Verify full JUnit XML and new coordinators
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          paths=list(Path('app/build/test-results/testDebugUnitTest').glob('TEST-*.xml'))
+          assert paths, 'Missing JUnit evidence'
+          tests=failures=errors=skips=0
+          for p in paths:
+              root=ET.parse(p).getroot()
+              tests+=int(root.attrib.get('tests',0))
+              failures+=int(root.attrib.get('failures',0))
+              errors+=int(root.attrib.get('errors',0))
+              skips+=int(root.attrib.get('skipped',0))
+          print(f'JUnit XML: suites={len(paths)} tests={tests} failures={failures} errors={errors} skipped={skips}')
+          assert failures==errors==skips==0
+          assert any('ResidentIncidentCoordinatorTest' in p.name for p in paths)
+          assert any('ManagerIncidentCoordinatorTest' in p.name for p in paths)
+          assert tests>=202, 'Expected baseline 183 + 19 coordinator tests including teardown guards'
+          PY
+      - name: Check no tracked runtime/XML changes during CI
+        if: always()
+        run: git diff --exit-code -- app/src/main/java app/src/main/res app/src/test
