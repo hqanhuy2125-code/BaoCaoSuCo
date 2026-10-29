@@ -137,17 +137,8 @@ public final class FirebaseIncidentRepository {
         while (cause != null) {
             if (cause instanceof Reject) return ((Reject) cause).error;
             if (cause instanceof FirebaseFirestoreException) {
-                FirebaseFirestoreException.Code code = ((FirebaseFirestoreException) cause).getCode();
-                if (code == FirebaseFirestoreException.Code.PERMISSION_DENIED)
-                    return IncidentRepository.Error.PERMISSION_DENIED;
-                if (code == FirebaseFirestoreException.Code.UNAVAILABLE
-                        || code == FirebaseFirestoreException.Code.DEADLINE_EXCEEDED)
-                    return IncidentRepository.Error.NETWORK;
-                if (code == FirebaseFirestoreException.Code.ABORTED
-                        || code == FirebaseFirestoreException.Code.ALREADY_EXISTS)
-                    return IncidentRepository.Error.CONFLICT;
-                if (code == FirebaseFirestoreException.Code.FAILED_PRECONDITION)
-                    return IncidentRepository.Error.SECURITY_NOT_READY;
+                return IncidentFirestoreFailureMapper.classify(
+                        ((FirebaseFirestoreException) cause).getCode().name());
             }
             cause = cause.getCause();
         }
