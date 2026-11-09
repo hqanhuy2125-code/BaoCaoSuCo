@@ -93,12 +93,20 @@ C01 trong [PROJECT_SCOPE](../PROJECT_SCOPE.md) và Issue #54 vốn thuộc **enh
 |---|---|---|---|
 | INSPECT — xác minh module Camera còn thiếu trên remote `main` | Huy (điều phối) | **DONE (remote inspection)** | Baseline `62c616f`: chưa có photo classes/FileProvider, data contract text-only |
 | PLAN — mô tả scope, WBS, gate, test matrix | Huy (điều phối) | **DOCUMENTED / REVIEW_PENDING** | File kế hoạch này trên feature branch, chưa merge main |
-| AUTH — chốt sửa Manifest/FileProvider (L2) | Huy + owner/reviewer bị ảnh hưởng | **BLOCKED_APPROVAL** | Chưa ghi nhận phê duyệt cụ thể |
-| D1 — code Camera/Picker | Huy | **TODO** | Build/tests NOT_RUN |
+| AUTH — chốt sửa Manifest/FileProvider (L2) | Huy + owner/reviewer bị ảnh hưởng | **BLOCKED_APPROVAL** | Chưa ghi nhận phê duyệt cụ thể; xem [G1 handoff](../testing/C01_G1_CAMERA_GALLERY_HANDOFF.md) |
+| D1 — code Camera/Picker | Huy | **JAVA_CODE_READY / G1_BLOCKED_CONFIG** | `IncidentPhotoController`, `IncidentPhotoRequestState` + 8 JUnit methods committed; FileProvider/Android build/manual checks still pending |
 | D2 — validate, resize, local store | Huy | **TODO** | Build/tests NOT_RUN |
-| D3 — CI/manual tests, code review, PR | Huy + independent reviewer | **TODO** | No PR, no test evidence |
+| D3 — CI/manual tests, code review, PR | Huy + independent reviewer | **TODO** | Android/Gradle/device evidence NOT_RUN; review/merge not completed |
 | UI — Phúc XML/IDs → Huy Java integration | Phúc → Huy | **BLOCKED_DEPENDENCY** | Issue #59 còn mở, không dùng ID giả |
 | C01 full cloud evidence attachment | Group decision | **OUT_OF_SCOPE_THIS_SPRINT** | Chờ riêng hợp đồng Storage/Rules/billing |
+
+### Checkpoint G1 — 09/11/2026 (actual code commits)
+
+- **G1 Java implemented / NOT DEVICE-ACCEPTED**: `IncidentPhotoController.java` (`TakePicture`, `PickVisualMedia`, success/cancel/error), `IncidentPhotoRequestState.java` (single-flight, stale-callback guards), `IncidentPhotoRequestStateTest.java` (8 JUnit methods authored). All additions under Huy's `resident/photo/**` and test module.
+- **Handoff:** [C01 G1 Camera/Gallery Java](../testing/C01_G1_CAMERA_GALLERY_HANDOFF.md). No Phúc XML binding, no Firebase/image persistence, no changes in Auth/LOG/Manager/Data/Gradle/Manifest.
+- **G1 gate:** `JAVA_CODE_READY / BLOCKED_CONFIG`: Camera full-size uses FileProvider authority `<applicationId>.incidentphoto.fileprovider`. Manifest provider and minimum `res/xml` path require task-specific L2 approval; both remain unwritten. Gallery API code exists but has not been exercised on a device.
+- **Verification:** Android Gradle/JUnit/emulator/phone = `NOT_RUN`; do not promote to `G1_PASS` until reviewed FileProvider config, build, and manual smoke. Rotation/process-recreation still to verify in G3.
+- **Next:** obtain L2 authorization, land minimal FileProvider configuration separately in this branch, run testDebugUnitTest + assembleDebug and emulator Camera/Picker; then D2 image processing.
 
 ### Mẫu ghi tiến độ G1/G2/G3
 
