@@ -33,3 +33,11 @@ Feature behaves as specified, no out-of-scope diff, build/test evidence captured
 ## Cutline
 
 Optional photos, extra statistics/QR/offline support are first candidates for removal, but confirm course's required mobile mechanisms **before** cutting photo/notification features. Never cut auth, report creation, assignment, valid state transitions, due dates and core E2E flow without renegotiating MVP.
+
+## C01-LOCAL — 09–11/11/2026 (tài liệu triển khai trên feature branch)
+
+- **Owner:** Trần Quốc Huy (Resident Java + tích hợp kỹ thuật). **Status:** PLAN_DOCUMENTED / G1_JAVA_CODE_READY / G1_CONFIG_BLOCKED; approval cho Manifest/FileProvider vẫn PENDING, Android build/device NOT_RUN.
+- **Kế hoạch 3 ngày + task/gate/test matrix:** [C01 Camera Local — Execution Plan](https://github.com/hqanhuy2125-code/BaoCaoSuCo/blob/feature/c01-camera-local-20261109/docs/planning/C01_CAMERA_LOCAL_3DAY_EXECUTION_PLAN.md). Kế hoạch đang ở `feature/c01-camera-local-20261109`, **chưa merge vào main**.
+- **D1 09/11:** Camera hệ thống + Photo Picker (G1). **D2 10/11:** validate/resize/JPEG/local store (G2). **D3 11/11:** unit test, APK, manual device, review/handoff (G3).
+- **Giới hạn:** chỉ xử lý ảnh cục bộ, không upload Firebase/Blaze, không thay đổi incident Repository/data contract, không thay XML của Phúc. B01 XML/ID vẫn phụ thuộc [Issue #59](https://github.com/hqanhuy2125-code/BaoCaoSuCo/issues/59). Theo dõi milestone trong [Issue #54](https://github.com/hqanhuy2125-code/BaoCaoSuCo/issues/54).
+- **Ưu tiên ban đầu:** việc ảnh trong PROJECT_SCOPE vẫn là optional sau MVP; ghi nhận C01-LOCAL như sprint giới hạn theo yêu cầu của Huy, không biến thành phê duyệt nhóm hoặc hoàn tất C01 cloud. Reviewer độc lập cần phê duyệt trước merge.
