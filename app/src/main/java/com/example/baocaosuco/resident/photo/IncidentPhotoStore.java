@@ -44,11 +44,25 @@ public final class IncidentPhotoStore {
         return file != null && (!file.exists() || file.delete());
     }
 
+    /** Validates a Camera URI under the dedicated cache path for saved-state restore. */
+    File resolveCaptured(Uri uri) {
+        File file = resolveOwnedFile(uri, "incident_", ".jpg");
+        if (file == null || file.getName().startsWith("incident_ready_")) return null;
+        return file;
+    }
+
+    /** Returns a safe size or -1 for a missing/modified prepared image. */
+    long preparedLength(Uri uri) {
+        File file = resolveOwnedFile(uri, "incident_ready_", ".jpg");
+        if (file == null || !file.isFile() || file.length() <= 0
+                || file.length() > IncidentPhotoPolicy.MAX_OUTPUT_BYTES) return -1L;
+        return file.length();
+    }
+
     /** Remove temporary full-size Camera source AFTER G2 has consumed it. */
     boolean deleteCaptured(Uri uri) {
-        File file = resolveOwnedFile(uri, "incident_", ".jpg");
-        if (file == null || file.getName().startsWith("incident_ready_")) return false;
-        return !file.exists() || file.delete();
+        File file = resolveCaptured(uri);
+        return file != null && (!file.exists() || file.delete());
     }
 
     void deleteInternal(File file) {

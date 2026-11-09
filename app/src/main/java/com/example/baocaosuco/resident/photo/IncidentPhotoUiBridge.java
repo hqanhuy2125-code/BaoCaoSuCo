@@ -1,10 +1,12 @@
 package com.example.baocaosuco.resident.photo;
 
 import android.net.Uri;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 
 import androidx.activity.ComponentActivity;
+import androidx.savedstate.SavedStateRegistry;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -16,6 +18,12 @@ import java.util.concurrent.RejectedExecutionException;
  * IncidentRepository, Firebase data, or another teammate's layout.
  */
 public final class IncidentPhotoUiBridge {
+    private static final String STATE_KEY = "c01.photo.processed.selected";
+    private static final String SAVED_URI = "uri";
+    private static final String SAVED_BYTES = "bytes";
+    private static final String SAVED_WIDTH = "width";
+    private static final String SAVED_HEIGHT = "height";
+
     public interface Listener {
         void onBusy(boolean busy);
         void onPhotoReady(IncidentPhotoProcessor.PreparedPhoto photo);
@@ -27,6 +35,8 @@ public final class IncidentPhotoUiBridge {
     }
 
     private final Listener listener;
+    private final ComponentActivity activity;
+    private final SavedStateRegistry savedStateRegistry;
     private final IncidentPhotoController controller;
     private final IncidentPhotoStore store;
     private final IncidentPhotoProcessor processor;
@@ -43,8 +53,12 @@ public final class IncidentPhotoUiBridge {
             throw new IllegalArgumentException("Activity and Listener required");
         }
         this.listener = listener;
+        this.activity = activity;
         store = new IncidentPhotoStore(activity);
         processor = new IncidentPhotoProcessor(activity, store);
+        savedStateRegistry = activity.getSavedStateRegistry();
+        restoreSelection(savedStateRegistry.consumeRestoredStateForKey(STATE_KEY));
+        savedStateRegistry.registerSavedStateProvider(STATE_KEY, this::saveSelection);
         controller = new IncidentPhotoController(activity,
                 new IncidentPhotoController.Listener() {
                     @Override public void onSelected(Uri uri,
@@ -64,6 +78,36 @@ public final class IncidentPhotoUiBridge {
                         listener.onPickerError(source, error);
                     }
                 });
+    }
+
+    private void restoreSelection(Bundle saved) {
+        if (saved == null) return;
+        String raw = saved.getString(SAVED_URI);
+        if (raw == null) return;
+        try {
+            Uri uri = Uri.parse(raw);
+            long size = saved.getLong(SAVED_BYTES, -1);
+            int width = saved.getInt(SAVED_WIDTH, -1);
+            int height = saved.getInt(SAVED_HEIGHT, -1);
+            if (size > 0 && size == store.preparedLength(uri)
+                    && width > 0 && width <= IncidentPhotoPolicy.MAX_OUTPUT_SIDE
+                    && height > 0 && height <= IncidentPhotoPolicy.MAX_OUTPUT_SIDE) {
+                current = new IncidentPhotoProcessor.PreparedPhoto(uri, size, width, height);
+            }
+        } catch (IllegalArgumentException ignored) {
+            // Invalid saved cache photo is simply not restored.
+        }
+    }
+
+    private Bundle saveSelection() {
+        Bundle saved = new Bundle();
+        if (current != null) {
+            saved.putString(SAVED_URI, current.getUri().toString());
+            saved.putLong(SAVED_BYTES, current.getBytes());
+            saved.putInt(SAVED_WIDTH, current.getWidth());
+            saved.putInt(SAVED_HEIGHT, current.getHeight());
+        }
+        return saved;
     }
 
     /** Buttons must remain disabled until the existing RESIDENT role gate passes. */
@@ -129,6 +173,11 @@ public final class IncidentPhotoUiBridge {
         return current == null ? null : current.getUri();
     }
 
+    /** Allows the B01 binder to redraw a valid preview after Activity recreation. */
+    public IncidentPhotoProcessor.PreparedPhoto currentPhoto() {
+        return current;
+    }
+
     public boolean isBusy() {
         return busy;
     }
@@ -156,7 +205,11 @@ public final class IncidentPhotoUiBridge {
         generation++;
         controller.close();
         worker.shutdownNow();
-        if (current != null) store.deletePrepared(current.getUri());
+        savedStateRegistry.unregisterSavedStateProvider(STATE_KEY);
+        // Keep already-processed preview only while Android is recreating this UI.
+        if (current != null && !activity.isChangingConfigurations()) {
+            store.deletePrepared(current.getUri());
+        }
         current = null;
     }
 }

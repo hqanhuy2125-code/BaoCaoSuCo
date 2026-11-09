@@ -2,12 +2,14 @@ package com.example.baocaosuco.resident.photo;
 
 import android.content.ActivityNotFoundException;
 import android.net.Uri;
+import android.os.Bundle;
 
 import androidx.activity.ComponentActivity;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.PickVisualMediaRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.content.FileProvider;
+import androidx.savedstate.SavedStateRegistry;
 
 import java.io.File;
 import java.io.IOException;
@@ -45,9 +47,14 @@ public final class IncidentPhotoController {
 
     private static final String CAMERA_CACHE_FOLDER = "incident_camera";
     private static final String PROVIDER_SUFFIX = ".incidentphoto.fileprovider";
+    private static final String STATE_KEY = "c01.photo.camera.pending";
+    private static final String SAVED_OPERATION = "operation";
+    private static final String SAVED_URI = "uri";
 
     private final ComponentActivity activity;
     private final Listener listener;
+    private final IncidentPhotoStore store;
+    private final SavedStateRegistry savedStateRegistry;
     private final IncidentPhotoRequestState state = new IncidentPhotoRequestState();
     private final ActivityResultLauncher<Uri> cameraLauncher;
     private final ActivityResultLauncher<PickVisualMediaRequest> galleryLauncher;
@@ -65,6 +72,12 @@ public final class IncidentPhotoController {
         }
         this.activity = activity;
         this.listener = listener;
+        this.store = new IncidentPhotoStore(activity);
+        this.savedStateRegistry = activity.getSavedStateRegistry();
+
+        // Goi sau super.onCreate(), truoc STARTED. URI pending duoc giu khi xoay man hinh.
+        restorePending(savedStateRegistry.consumeRestoredStateForKey(STATE_KEY));
+        savedStateRegistry.registerSavedStateProvider(STATE_KEY, this::savePending);
 
         cameraLauncher = activity.registerForActivityResult(
                 new ActivityResultContracts.TakePicture(),
@@ -76,7 +89,43 @@ public final class IncidentPhotoController {
         );
     }
 
-    /** Starts full-resolution capture; requires approved FileProvider app config. */
+    private void restorePending(Bundle saved) {
+        if (saved == null) return;
+        String operation = saved.getString(SAVED_OPERATION);
+        if ("CAMERA".equals(operation)) {
+            state.begin(IncidentPhotoRequestState.Operation.CAMERA);
+            String raw = saved.getString(SAVED_URI);
+            if (raw != null) {
+                try {
+                    Uri uri = Uri.parse(raw);
+                    File owned = store.resolveCaptured(uri);
+                    if (owned != null) {
+                        pendingCameraFile = owned;
+                        pendingCameraUri = uri;
+                    }
+                } catch (IllegalArgumentException ignored) {
+                    // Invalid restoration yields EMPTY_CAPTURE when Camera returns.
+                }
+            }
+        } else if ("GALLERY".equals(operation)) {
+            state.begin(IncidentPhotoRequestState.Operation.GALLERY);
+        }
+    }
+
+    private Bundle savePending() {
+        Bundle saved = new Bundle();
+        if (state.isPending(IncidentPhotoRequestState.Operation.CAMERA)) {
+            saved.putString(SAVED_OPERATION, "CAMERA");
+            if (pendingCameraUri != null) {
+                saved.putString(SAVED_URI, pendingCameraUri.toString());
+            }
+        } else if (state.isPending(IncidentPhotoRequestState.Operation.GALLERY)) {
+            saved.putString(SAVED_OPERATION, "GALLERY");
+        }
+        return saved;
+    }
+
+    /** Starts full-resolution capture; requires the scoped FileProvider app config. */
     public boolean capture() {
         if (!state.begin(IncidentPhotoRequestState.Operation.CAMERA)) return false;
 
@@ -200,15 +249,23 @@ public final class IncidentPhotoController {
     }
 
     /**
-     * Must be called from Activity.onDestroy()/logout. Callbacks after close are ignored.
-     * Rotation/process-death restoration of an in-flight capture is NOT part of G1;
-     * G3 will verify and close that lifecycle gate before app-level acceptance.
+     * Call from Activity.onDestroy()/logout. On configuration changes the captured
+     * file survives for the next ActivityResult launcher; on real exit it is removed.
+     * Device/process-death behavior still requires G3 Android verification.
      */
     public void close() {
         if (state.isClosed()) return;
+        boolean keepCameraFile = activity.isChangingConfigurations()
+                && state.isPending(IncidentPhotoRequestState.Operation.CAMERA);
         state.close();
         cameraLauncher.unregister();
         galleryLauncher.unregister();
-        deletePendingCamera();
+        savedStateRegistry.unregisterSavedStateProvider(STATE_KEY);
+        if (keepCameraFile) {
+            pendingCameraFile = null;
+            pendingCameraUri = null;
+        } else {
+            deletePendingCamera();
+        }
     }
 }
