@@ -36,7 +36,7 @@ Optional photos, extra statistics/QR/offline support are first candidates for re
 
 ## C01-LOCAL — 09–11/11/2026 (tài liệu triển khai trên feature branch)
 
-- **Owner:** Trần Quốc Huy (Resident Java + tích hợp kỹ thuật). **Status:** PLAN_DOCUMENTED / CODE_NOT_STARTED; approval cho Manifest/FileProvider vẫn PENDING, build/test NOT_RUN.
+- **Owner:** Trần Quốc Huy (Resident Java + tích hợp kỹ thuật). **Status:** PLAN_DOCUMENTED / G1_JAVA_CODE_READY / G1_CONFIG_BLOCKED; approval cho Manifest/FileProvider vẫn PENDING, Android build/device NOT_RUN.
 - **Kế hoạch 3 ngày + task/gate/test matrix:** [C01 Camera Local — Execution Plan](https://github.com/hqanhuy2125-code/BaoCaoSuCo/blob/feature/c01-camera-local-20261109/docs/planning/C01_CAMERA_LOCAL_3DAY_EXECUTION_PLAN.md). Kế hoạch đang ở `feature/c01-camera-local-20261109`, **chưa merge vào main**.
 - **D1 09/11:** Camera hệ thống + Photo Picker (G1). **D2 10/11:** validate/resize/JPEG/local store (G2). **D3 11/11:** unit test, APK, manual device, review/handoff (G3).
 - **Giới hạn:** chỉ xử lý ảnh cục bộ, không upload Firebase/Blaze, không thay đổi incident Repository/data contract, không thay XML của Phúc. B01 XML/ID vẫn phụ thuộc [Issue #59](https://github.com/hqanhuy2125-code/BaoCaoSuCo/issues/59). Theo dõi milestone trong [Issue #54](https://github.com/hqanhuy2125-code/BaoCaoSuCo/issues/54).
