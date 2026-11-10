@@ -179,7 +179,7 @@ function publicMetadata(row: {id: string; incident_id: string; kind: string; upl
   };
 }
 
-async function listEvidence(admin: ReturnType<typeof createClient>, incidentId: string) {
+async function listEvidence(admin: ReturnType<typeof adminClient>, incidentId: string) {
   const { data, error } = await admin.from("incident_evidence")
     .select("id,incident_id,kind,uploaded_by,size_bytes,created_at")
     .eq("incident_id", incidentId).order("created_at", { ascending: true });
@@ -187,7 +187,7 @@ async function listEvidence(admin: ReturnType<typeof createClient>, incidentId: 
   return json(200, { items: (data || []).map(publicMetadata) });
 }
 
-async function getPhoto(admin: ReturnType<typeof createClient>, incidentId: string, photoId: string) {
+async function getPhoto(admin: ReturnType<typeof adminClient>, incidentId: string, photoId: string) {
   if (!UUID.test(photoId)) throw new ApiError(400, "INVALID_PHOTO_ID");
   const { data, error } = await admin.from("incident_evidence")
     .select("storage_path,content_type,size_bytes")
@@ -207,7 +207,7 @@ async function getPhoto(admin: ReturnType<typeof createClient>, incidentId: stri
   });
 }
 
-async function createEvidence(req: Request, admin: ReturnType<typeof createClient>, identity: {token: string; uid: string; authTime: number}, incidentId: string, kind: string, access: {role: 'RESIDENT' | 'MANAGER'; status: string}) {
+async function createEvidence(req: Request, admin: ReturnType<typeof adminClient>, identity: {token: string; uid: string; authTime: number}, incidentId: string, kind: string, access: {role: 'RESIDENT' | 'MANAGER'; status: string}) {
   if (kind !== "REPORTED" && kind !== "RESOLUTION") {
     throw new ApiError(400, "INVALID_EVIDENCE_KIND");
   }
