@@ -1,0 +1,55 @@
+name: C01 G0/G1 isolated HTTP integration and readable report
+on:
+  pull_request:
+    paths:
+      - 'security/gateway/integration/**'
+      - '.github/workflows/c01-g0-g1-isolated.yml'
+      - 'security/gateway/revocation-check.mjs'
+      - 'security/gateway/evidence-gateway.v2.candidate.ts'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      G0G1_REPORT_DIR: ${{ runner.temp }}/g0g1-report
+      G0G1_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Assert CI has no production authentication credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "${FIREBASE_SERVICE_ACCOUNT:-}"
+          test -z "${SUPABASE_SERVICE_ROLE_KEY:-}"
+          test -z "${FIREBASE_ID_TOKEN:-}"
+      - name: G0/G1 real local HTTP sandbox (no Supabase/Firebase calls)
+        shell: bash
+        run: node --test security/gateway/integration/isolated.test.mjs
+      - name: Upload Vietnamese Markdown and JSON report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: C01-G0-G1-isolated-report
+          path: ${{ runner.temp }}/g0g1-report/
+          if-no-files-found: warn
+          retention-days: 14
+  deno-candidate-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: 'v2.x'
+      - name: Type check the exact candidate with real Deno dependencies
+        run: deno check security/gateway/evidence-gateway.v2.candidate.ts
