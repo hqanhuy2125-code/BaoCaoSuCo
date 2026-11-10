@@ -16,14 +16,16 @@ const JWKS = createRemoteJWKSet(new URL(
 ));
 
 class ApiError extends Error {
-  constructor(status, code) {
+  status: number;
+  code: string;
+  constructor(status: number, code: string) {
     super(code);
     this.status = status;
     this.code = code;
   }
 }
 
-function json(status, object) {
+function json(status: number, object: Record<string, unknown>) {
   return new Response(JSON.stringify(object), {
     status,
     headers: {
@@ -34,7 +36,7 @@ function json(status, object) {
   });
 }
 
-async function verifyFirebase(req) {
+async function verifyFirebase(req: Request) {
   const authorization = req.headers.get("authorization") || "";
   if (!authorization.startsWith("Bearer ")) throw new ApiError(401, "FIREBASE_AUTH_REQUIRED");
   const token = authorization.slice(7);
@@ -63,7 +65,7 @@ async function verifyFirebase(req) {
   }
 }
 
-async function firestoreDocument(token, collection, documentId) {
+async function firestoreDocument(token: string, collection: 'users' | 'incidents', documentId: string) {
   // No arbitrary URL/collection is accepted: prevents proxying Firebase data.
   if (!["users", "incidents"].includes(collection)) throw new ApiError(500, "CONFIG_ERROR");
   if (!ALLOWED_ID.test(documentId)) throw new ApiError(400, "INVALID_ID");
@@ -90,12 +92,12 @@ async function firestoreDocument(token, collection, documentId) {
   return body.fields;
 }
 
-function firestoreString(fields, name) {
+function firestoreString(fields: Record<string, { stringValue?: string }> | null, name: string) {
   const value = fields?.[name]?.stringValue;
   return typeof value === "string" ? value : null;
 }
 
-async function authorizeIncident(identity, incidentId) {
+async function authorizeIncident(identity: {token: string; uid: string; authTime: number}, incidentId: string) {
   const profile = await firestoreDocument(identity.token, "users", identity.uid);
   const role = firestoreString(profile, "role");
   if (firestoreString(profile, "uid") !== identity.uid ||
@@ -129,7 +131,7 @@ function adminClient() {
   });
 }
 
-async function readJpeg(req) {
+async function readJpeg(req: Request) {
   const contentType = (req.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
   if (contentType !== "image/jpeg") throw new ApiError(415, "JPEG_REQUIRED");
   const len = Number(req.headers.get("content-length"));
@@ -166,7 +168,7 @@ async function readJpeg(req) {
   return bytes;
 }
 
-function publicMetadata(row) {
+function publicMetadata(row: {id: string; incident_id: string; kind: string; uploaded_by: string; size_bytes: number; created_at: string}) {
   return {
     id: row.id,
     incidentId: row.incident_id,
@@ -177,7 +179,7 @@ function publicMetadata(row) {
   };
 }
 
-async function listEvidence(admin, incidentId) {
+async function listEvidence(admin: ReturnType<typeof createClient>, incidentId: string) {
   const { data, error } = await admin.from("incident_evidence")
     .select("id,incident_id,kind,uploaded_by,size_bytes,created_at")
     .eq("incident_id", incidentId).order("created_at", { ascending: true });
@@ -185,7 +187,7 @@ async function listEvidence(admin, incidentId) {
   return json(200, { items: (data || []).map(publicMetadata) });
 }
 
-async function getPhoto(admin, incidentId, photoId) {
+async function getPhoto(admin: ReturnType<typeof createClient>, incidentId: string, photoId: string) {
   if (!UUID.test(photoId)) throw new ApiError(400, "INVALID_PHOTO_ID");
   const { data, error } = await admin.from("incident_evidence")
     .select("storage_path,content_type,size_bytes")
@@ -205,7 +207,7 @@ async function getPhoto(admin, incidentId, photoId) {
   });
 }
 
-async function createEvidence(req, admin, identity, incidentId, kind, access) {
+async function createEvidence(req: Request, admin: ReturnType<typeof createClient>, identity: {token: string; uid: string; authTime: number}, incidentId: string, kind: string, access: {role: 'RESIDENT' | 'MANAGER'; status: string}) {
   if (kind !== "REPORTED" && kind !== "RESOLUTION") {
     throw new ApiError(400, "INVALID_EVIDENCE_KIND");
   }

@@ -15,6 +15,7 @@ import { generateKeyPairSync, sign, verify } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import vm from 'node:vm';
+import { stripTypeScriptTypes } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { assertFirebaseAccountActive, FirebaseAuthStatusError } from '../revocation-check.mjs';
 
@@ -226,7 +227,7 @@ function loadActualCandidate() {
     crypto: globalThis.crypto,
     console: { error() { /* avoid leaking internal test fixture data */ } }
   });
-  new vm.Script(script, { filename: fileURLToPath(candidateURL) }).runInContext(ctx, { timeout: 1500 });
+  new vm.Script(stripTypeScriptTypes(script, { mode: 'strip' }), { filename: fileURLToPath(candidateURL) }).runInContext(ctx, { timeout: 1500 });
   assert.equal(typeof handler, 'function', 'Gateway entrypoint not registered');
 }
 before(async () => {
