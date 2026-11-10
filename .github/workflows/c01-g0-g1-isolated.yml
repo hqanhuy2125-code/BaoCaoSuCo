@@ -14,7 +14,6 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     env:
-      G0G1_REPORT_DIR: ${{ runner.temp }}/g0g1-report
       G0G1_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
@@ -32,6 +31,8 @@ jobs:
           test -z "${FIREBASE_ID_TOKEN:-}"
       - name: G0/G1 real local HTTP sandbox (no Supabase/Firebase calls)
         shell: bash
+        env:
+          G0G1_REPORT_DIR: ${{ runner.temp }}/g0g1-report
         run: node --test security/gateway/integration/isolated.test.mjs
       - name: Upload Vietnamese Markdown and JSON report
         if: always()
