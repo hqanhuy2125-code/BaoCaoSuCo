@@ -207,7 +207,7 @@ async function getPhoto(admin: ReturnType<typeof adminClient>, incidentId: strin
   });
 }
 
-async function createEvidence(req: Request, admin: ReturnType<typeof adminClient>, identity: {token: string; uid: string; authTime: number}, incidentId: string, kind: string, access: {role: 'RESIDENT' | 'MANAGER'; status: string}) {
+async function createEvidence(req: Request, admin: ReturnType<typeof adminClient>, identity: {token: string; uid: string; authTime: number}, incidentId: string, kind: string, access: {role: string; status: string}) {
   if (kind !== "REPORTED" && kind !== "RESOLUTION") {
     throw new ApiError(400, "INVALID_EVIDENCE_KIND");
   }
