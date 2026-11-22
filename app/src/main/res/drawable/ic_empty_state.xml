@@ -1,0 +1,24 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <!-- Circle background -->
+    <path
+        android:fillColor="#EBF3FF"
+        android:pathData="M60,10 C87.61,10 110,32.39 110,60 C110,87.61 87.61,110 60,110 C32.39,110 10,87.61 10,60 C10,32.39 32.39,10 60,10 Z"/>
+    <!-- Document Card -->
+    <path
+        android:fillColor="#FF54A0FF"
+        android:pathData="M40,35h40c2.76,0 5,2.24 5,5v40c0,2.76 -2.24,5 -5,5H40c-2.76,0 -5,-2.24 -5,-5V40c0,-2.76 2.24,-5 5,-5z" />
+    <path
+        android:fillColor="#FFF78FB3"
+        android:pathData="M50,50h20v6H50zM50,62h15v6H50z" />
+    <!-- Check badge -->
+    <path
+        android:fillColor="#FF1DD1A1"
+        android:pathData="M82,64 C89.73,64 96,70.27 96,78 C96,85.73 89.73,92 82,92 C74.27,92 68,85.73 68,78 C68,70.27 74.27,64 82,64 Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M78,78l3,3 7,-7 1.5,1.5 -8.5,8.5 -4.5,-4.5 z"/>
+</vector>
