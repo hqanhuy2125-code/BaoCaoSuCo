@@ -51,7 +51,15 @@
             android:exported="false" />
 
         <activity
+            android:name=".resident.ResidentDetailActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".manager.ManagerMainActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".manager.ManagerDetailActivity"
             android:exported="false" />
 
     </application>
