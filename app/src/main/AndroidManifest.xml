@@ -14,6 +14,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BaoCaoSuCo">
 
+        <!-- C01 Camera: restricted app-cache FileProvider, no broad storage access. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.incidentphoto.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/incident_photo_paths" />
+        </provider>
+
         <!-- Launcher: bo dieu huong trung tam -->
         <activity
             android:name=".MainActivity"
