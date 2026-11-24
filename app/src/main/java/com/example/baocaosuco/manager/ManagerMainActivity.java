@@ -2,10 +2,12 @@ package com.example.baocaosuco.manager;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.widget.Button;
+import android.view.View;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.Fragment;
 
 import com.example.baocaosuco.MainActivity;
 import com.example.baocaosuco.R;
@@ -14,27 +16,24 @@ import com.example.baocaosuco.auth.AuthRepository;
 import com.example.baocaosuco.auth.LoginActivity;
 import com.example.baocaosuco.data.model.User;
 
-/**
- * Man hinh chinh cua Quanly.
- * TODO (Nguoi 3): them danh sach xu ly su co, thong ke, v.v.
- */
 public class ManagerMainActivity extends AppCompatActivity {
 
     private TextView tvGreeting;
+    private TextView tvName;
+    private TextView tvEmail;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.manager_main);
+        setContentView(R.layout.ui_manager_main);
 
-        tvGreeting = findViewById(R.id.manager_main_greeting);
+        tvGreeting = findViewById(R.id.welcome_text);
+        tvName = findViewById(R.id.tv_header_resident_name);
+        tvEmail = findViewById(R.id.tv_header_resident_email);
 
-        // Lay ten hien thi ban dau tu Intent (neu co)
         String initialName = getIntent().getStringExtra("displayName");
         setGreetingText(initialName);
 
-        // Kiem tra phan quyen: Chi cho phep nguoi dung co vai tro Quan ly da dang nhap o lai.
-        // Neu chua dang nhap hoac sai vai tro thi chuyen ve MainActivity de dieu huong lai.
         AuthRepositories.get(this).getCurrentUser(new AuthRepository.Callback<User>() {
             @Override
             public void onSuccess(User user) {
@@ -43,9 +42,12 @@ public class ManagerMainActivity extends AppCompatActivity {
                     redirectToMain();
                     return;
                 }
-                // Cap nhat ten hien thi tu User neu co (phong truong hop Intent khong truyen hoac rong)
                 if (user.getDisplayName() != null && !user.getDisplayName().trim().isEmpty()) {
                     setGreetingText(user.getDisplayName());
+                    tvName.setText(user.getDisplayName());
+                }
+                if (user.getEmail() != null) {
+                    tvEmail.setText(user.getEmail());
                 }
             }
 
@@ -56,23 +58,37 @@ public class ManagerMainActivity extends AppCompatActivity {
             }
         });
 
-        Button btnLogout = findViewById(R.id.manager_main_btn_logout);
-        btnLogout.setOnClickListener(v -> logout());
+        ImageButton btnLogout = findViewById(R.id.logout_button);
+        if (btnLogout != null) {
+            btnLogout.setOnClickListener(v -> logout());
+        }
+
+        View navHome = findViewById(R.id.nav_item_home);
+        if (navHome != null) {
+            navHome.setOnClickListener(v -> switchToHome());
+        }
+
+        if (savedInstanceState == null) {
+            switchToHome();
+        }
     }
 
-    /**
-     * Hien thi loi chao, xu ly an toan truong hop null va chuoi rong.
-     */
     private void setGreetingText(String name) {
         if (tvGreeting == null) return;
         String safeName = (name != null) ? name.trim() : "";
-        tvGreeting.setText(getString(R.string.manager_main_greeting, safeName));
+        tvGreeting.setText(getString(R.string.manager_welcome) + " " + safeName);
     }
 
-    /**
-     * Chuyen ve MainActivity de dieu huong lai khi chua dang nhap hoac sai vai tro,
-     * dong thoi xoa sach back stack de tranh nguoi dung an Back quay lai man hinh nay.
-     */
+    public void switchToHome() {
+        loadFragment(new ManagerListFragment());
+    }
+
+    private void loadFragment(Fragment fragment) {
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.fragment_container, fragment)
+                .commit();
+    }
+
     private void redirectToMain() {
         Intent intent = new Intent(this, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
