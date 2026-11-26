@@ -86,6 +86,32 @@ These offline tests alone are **not** a production security PASS.
   G3 Android Camera/Gallery across two devices. No existing closed incident
   should be used for successful REPORTED/RESOLUTION uploads.
 
+## Shared Photo QA on Supabase staging
+
+Use the existing Firebase project, explicitly configured as
+`EVIDENCE_FIREBASE_PROJECT_ID=baocaosuco-c4ccc`, with Supabase
+`toqmwniuwqinielydgnp` only. The gateway uses the runtime-supplied
+`SUPABASE_URL` and denies requests for this pairing unless both
+`EVIDENCE_QA_USER_IDS` and `EVIDENCE_QA_INCIDENT_IDS` contain valid comma-separated
+IDs. Populate the two lists from the Owner-approved QA scope, through server-side
+configuration. The lists add a restriction before Firebase account lookup,
+Firestore authorization and privileged operations. Normal role, incident ownership,
+revocation and incident status rules still apply. Keep `EVIDENCE_ACCESS_ENABLED=false`
+through the initial reviewed staging deploy and locked HTTP smoke.
+
+For an opt-in debug APK in PR #71, add a local resource file at
+`app/src/debug/res/values/evidence_qa_local.xml` (Git ignored) with these string
+resources: `evidence_environment=qa-shared-photo`,
+`evidence_approved_staging_ref=toqmwniuwqinielydgnp`, and
+`evidence_approved_staging_firebase=baocaosuco-c4ccc`. Build the debug variant.
+Release and default builds keep the main resource defaults. Keep the Firebase Web
+API key in Supabase server configuration and keep service-role credentials out of
+the Android build.
+
+The independent reviewer must also approve the orphan reconciliation procedure
+and the residual cross-cloud race documented below. The Owner must separately
+authorize the allowlist, synthetic JPEG count and cleanup before any unlocked test.
+
 ## Source fidelity and safety
 
 This PR is review-only. The reference v1 Edge Function remains untouched.
