@@ -92,3 +92,54 @@ This PR is review-only. The reference v1 Edge Function remains untouched.
 The Firebase Admin SDK checkRevoked variant is an acceptable alternative if
 the reviewer chooses it and secure server-only credentials are approved;
 it is not assumed Deno-compatible without an actual integration check.
+
+## FINAL-01 candidate delta (local only)
+
+The exact JWT checks require exp, iat, sub and auth_time. Firebase timestamps
+must be nonnegative safe integer seconds; the existing RS256, issuer, audience
+and 15-second clock tolerance still apply. The test branch verifies this with
+the pinned production JOSE library and a test-only local RSA keyset.
+
+The gateway rejects marker-only JPEGs. It validates bounded 2 MiB input,
+container segment lengths, frame and scan presence, table markers and
+scan framing (8-bit baseline, extended sequential, or progressive Huffman JPEG).
+It does not decode coefficients or prove the image is decodable. Android bounds
+download preview dimensions to the camera module's output limit.
+
+Uniqueness is enforced by the existing incident_id/kind database constraint.
+A duplicate result is 409; a definite SQL rejection incurs cleanup of the
+request's own randomly named object only. An ambiguous insert result is read
+back by the request's incident and evidence IDs. Success requires matching
+stored metadata. An inconclusive result returns 503 without deleting potentially
+referenced bytes. That object remains private and is not listed without a metadata
+row. PUT errors and cleanup failures can also leave private objects if the
+operation completes late or storage is unavailable. Logs include only an opaque
+object UUID for reconciliation.
+
+Owner operations must define an age threshold, verify no pending requests, and
+confirm no metadata row references an object before deleting it in an approved
+maintenance window. Recovery of unconfirmed outcomes and orphan cleanup need
+a separate authorized operational procedure; this PR does not create a job.
+
+Firestore role/ownership and write-state rules are checked again after receiving
+the JPEG and after storing it, before inserting metadata. A disallowed change
+observed on either refresh is denied. Firestore can still change after the last
+read. There is no cross-cloud transaction or lock, so residual races must be
+accepted by the reviewer/Owner before enabling writes.
+
+## Staging checklist — values supplied by Owner
+
+- Isolated Supabase and Firebase projects, no production data. The Owner supplies
+  the actual project references and authorizes deployment of the exact accepted
+  bundle. Production is not a staging substitute.
+- Set EVIDENCE_FIREBASE_PROJECT_ID to the approved staging Firebase project ID
+  and use its server-side FIREBASE_WEB_API_KEY. Confirm issuer/audience and the
+  key's Identity Toolkit restrictions. Configure secrets through the owner path,
+  never Git or an Android resource. Platform verify_jwt is false only because
+  the handler verifies Firebase tokens itself.
+- Verify the bucket is private, JPEG-only, 2 MiB; confirm uniqueness, RLS and
+  no direct anon/authenticated grants. Keeping the gate unset or false must
+  deny a valid token before accounts:lookup, Firestore or Storage.
+- Obtain independent L3 review on the exact SHA, staging signoff and an explicit
+  bounded-synthetic-write approval. Use disposable accounts for revocation,
+  disable/delete and role/ownership checks. No changes to production accounts.

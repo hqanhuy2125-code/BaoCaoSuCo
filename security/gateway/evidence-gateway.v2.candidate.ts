@@ -6,7 +6,8 @@ import { createRemoteJWKSet, jwtVerify } from "npm:jose@5.10.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.0";
 import { assertFirebaseAccountActive, FirebaseAuthStatusError } from "./revocation-check.mjs";
 
-const FIREBASE_PROJECT_ID = "baocaosuco-c4ccc";
+// Staging may pin its own approved Firebase project via server configuration.
+const FIREBASE_PROJECT_ID = Deno.env.get("EVIDENCE_FIREBASE_PROJECT_ID") ?? "baocaosuco-c4ccc";
 const BUCKET = "incident-evidence";
 const MAX_BYTES = 2 * 1024 * 1024;
 const ALLOWED_ID = /^[A-Za-z0-9_-]{1,128}$/;
@@ -36,7 +37,14 @@ function json(status: number, object: Record<string, unknown>) {
   });
 }
 
+function firebaseSeconds(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
 async function verifyFirebase(req: Request) {
+  if (!/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(FIREBASE_PROJECT_ID)) {
+    throw new ApiError(503, "FIREBASE_PROJECT_NOT_CONFIGURED");
+  }
   const authorization = req.headers.get("authorization") || "";
   if (!authorization.startsWith("Bearer ")) throw new ApiError(401, "FIREBASE_AUTH_REQUIRED");
   const token = authorization.slice(7);
@@ -48,15 +56,16 @@ async function verifyFirebase(req: Request) {
       algorithms: ["RS256"],
       issuer: "https://securetoken.google.com/" + FIREBASE_PROJECT_ID,
       audience: FIREBASE_PROJECT_ID,
+      requiredClaims: ["exp", "iat", "sub", "auth_time"],
       clockTolerance: 15
     });
     const payload = verified.payload;
     const uid = payload.sub;
     const now = Math.floor(Date.now() / 1000);
     if (typeof uid !== "string" || !ALLOWED_ID.test(uid) ||
-        typeof payload.auth_time !== "number" ||
-        payload.auth_time > now + 15 ||
-        typeof payload.iat !== "number" || payload.iat > now + 15) {
+        !firebaseSeconds(payload.exp) ||
+        !firebaseSeconds(payload.auth_time) || payload.auth_time > now + 15 ||
+        !firebaseSeconds(payload.iat) || payload.iat > now + 15) {
       throw new Error("Invalid Firebase identity");
     }
     return { token, uid, authTime: payload.auth_time };
@@ -146,7 +155,7 @@ async function readJpeg(req: Request) {
       if (done) break;
       total += value.byteLength;
       if (total > MAX_BYTES) {
-        await reader.cancel();
+        await reader.cancel().catch(() => {});
         throw new ApiError(413, "PHOTO_TOO_LARGE");
       }
       parts.push(value);
@@ -161,11 +170,74 @@ async function readJpeg(req: Request) {
     bytes.set(part, offset);
     offset += part.byteLength;
   }
-  if (bytes[0] !== 255 || bytes[1] !== 216 || bytes[2] !== 255 ||
-      bytes[total - 2] !== 255 || bytes[total - 1] !== 217) {
-    throw new ApiError(415, "INVALID_JPEG");
-  }
+  if (!hasJpegStructure(bytes)) throw new ApiError(415, "INVALID_JPEG");
   return bytes;
+}
+
+/** Checks the JPEG container and scan boundaries, not the compressed image contents. */
+function hasJpegStructure(bytes: Uint8Array): boolean {
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return false;
+  let offset = 2;
+  let components = 0;
+  let quantization = false;
+  let huffman = false;
+  let scans = 0;
+  while (offset < bytes.length) {
+    if (bytes[offset++] !== 0xff) return false;
+    while (bytes[offset] === 0xff) offset++;
+    const marker = bytes[offset++];
+    if (marker === 0xd9) return scans > 0 && offset === bytes.length;
+    if (offset + 2 > bytes.length) return false;
+    const size = (bytes[offset] << 8) | bytes[offset + 1];
+    const end = offset + size;
+    if (size < 2 || end > bytes.length) return false;
+
+    if (marker === 0xc0 || marker === 0xc1 || marker === 0xc2) {
+      if (components !== 0 || size < 11) return false;
+      const height = (bytes[offset + 3] << 8) | bytes[offset + 4];
+      const width = (bytes[offset + 5] << 8) | bytes[offset + 6];
+      components = bytes[offset + 7];
+      if (bytes[offset + 2] !== 8 || width === 0 || height === 0 ||
+          components < 1 || components > 4 || size !== 8 + 3 * components) return false;
+    } else if (marker === 0xdb) {
+      if (size < 67) return false;
+      quantization = true;
+    } else if (marker === 0xc4) {
+      if (size < 20) return false;
+      huffman = true;
+    } else if (marker === 0xda) {
+      const count = bytes[offset + 2];
+      if (!quantization || !huffman || !components || count < 1 ||
+          count > components || size !== 6 + 2 * count) return false;
+      offset = end;
+      let data = false;
+      while (offset < bytes.length) {
+        if (bytes[offset++] !== 0xff) {
+          data = true;
+          continue;
+        }
+        const nextMarker = offset - 1;
+        while (bytes[offset] === 0xff) offset++;
+        const next = bytes[offset];
+        if (next === 0 || (next >= 0xd0 && next <= 0xd7)) {
+          if (next === 0) data = true;
+          offset++;
+        } else {
+          offset = nextMarker;
+          break;
+        }
+      }
+      if (!data) return false;
+      scans++;
+      continue;
+    } else if (marker === 0xdd) {
+      if (size !== 4) return false;
+    } else if (!(marker >= 0xe0 && marker <= 0xef) && marker !== 0xfe) {
+      return false;
+    }
+    offset = end;
+  }
+  return false;
 }
 
 function publicMetadata(row: {id: string; incident_id: string; kind: string; uploaded_by: string; size_bytes: number; created_at: string}) {
@@ -207,54 +279,106 @@ async function getPhoto(admin: ReturnType<typeof adminClient>, incidentId: strin
   });
 }
 
-async function createEvidence(req: Request, admin: ReturnType<typeof adminClient>, identity: {token: string; uid: string; authTime: number}, incidentId: string, kind: string, access: {role: string; status: string}) {
-  if (kind !== "REPORTED" && kind !== "RESOLUTION") {
+function assertWriteAllowed(kind: string, access: {role: string; status: string}) {
+  if (kind === "REPORTED") {
+    if (access.role === "RESIDENT" &&
+        ["NEW", "ASSIGNED", "IN_PROGRESS"].includes(access.status)) return;
+  } else if (kind === "RESOLUTION") {
+    if (access.role === "MANAGER" &&
+        ["IN_PROGRESS", "COMPLETED"].includes(access.status)) return;
+  } else {
     throw new ApiError(400, "INVALID_EVIDENCE_KIND");
   }
-  if (kind === "REPORTED") {
-    if (access.role !== "RESIDENT" ||
-        !["NEW", "ASSIGNED", "IN_PROGRESS"].includes(access.status)) {
-      throw new ApiError(403, "EVIDENCE_WRITE_DENIED");
-    }
-  } else if (access.role !== "MANAGER" ||
-             !["IN_PROGRESS", "COMPLETED"].includes(access.status)) {
-    throw new ApiError(403, "EVIDENCE_WRITE_DENIED");
-  }
+  throw new ApiError(403, "EVIDENCE_WRITE_DENIED");
+}
 
-  // Avoid pointless Storage writes on duplicate kind; DB uniqueness still
-  // arbitrates concurrent uploads after this read.
+async function cleanupUpload(admin: ReturnType<typeof adminClient>, path: string, id: string) {
+  try {
+    const cleanup = await admin.storage.from(BUCKET).remove([path]);
+    if (!cleanup.error) return;
+  } catch {
+    // The incident image is private even if compensation cannot reach Storage.
+  }
+  console.error("evidence-orphan-cleanup-required", id);
+}
+
+const METADATA = "id,incident_id,kind,uploaded_by,size_bytes,created_at";
+
+async function createEvidence(req: Request, admin: ReturnType<typeof adminClient>,
+    identity: {token: string; uid: string; authTime: number}, incidentId: string,
+    kind: string, access: {role: string; status: string}) {
+  assertWriteAllowed(kind, access);
+
   const prior = await admin.from("incident_evidence")
     .select("id").eq("incident_id", incidentId).eq("kind", kind).maybeSingle();
   if (prior.error) throw new ApiError(503, "EVIDENCE_DATABASE_UNAVAILABLE");
   if (prior.data) throw new ApiError(409, "EVIDENCE_ALREADY_EXISTS");
 
   const bytes = await readJpeg(req);
+  // Receiving and validating the body may take time. Use current Firestore policy again.
+  assertWriteAllowed(kind, await authorizeIncident(identity, incidentId));
   const id = crypto.randomUUID();
   const path = incidentId + "/" + id + ".jpg";
-  const uploaded = await admin.storage.from(BUCKET).upload(path, bytes, {
-    contentType: "image/jpeg",
-    cacheControl: "0",
-    upsert: false
-  });
-  if (uploaded.error) throw new ApiError(503, "PHOTO_UPLOAD_FAILED");
-
-  const inserted = await admin.from("incident_evidence").insert({
-    id,
-    incident_id: incidentId,
-    kind,
-    storage_path: path,
-    uploaded_by: identity.uid,
-    content_type: "image/jpeg",
-    size_bytes: bytes.byteLength
-  }).select("id,incident_id,kind,uploaded_by,size_bytes,created_at").single();
-
-  if (inserted.error || !inserted.data) {
-    // Best-effort compensation: avoid leaving orphaned private objects.
-    const cleanup = await admin.storage.from(BUCKET).remove([path]);
-    if (cleanup.error) console.error("evidence-orphan-cleanup-required");
-    throw new ApiError(503, "EVIDENCE_METADATA_FAILED");
+  try {
+    const uploaded = await admin.storage.from(BUCKET).upload(path, bytes, {
+      contentType: "image/jpeg",
+      cacheControl: "0",
+      upsert: false
+    });
+    if (uploaded.error) throw new Error("Storage upload not acknowledged");
+  } catch {
+    // No metadata was attempted; this request owns the newly generated path.
+    // A delayed put can still need offline reconciliation.
+    await cleanupUpload(admin, path, id);
+    throw new ApiError(503, "PHOTO_UPLOAD_FAILED");
   }
-  return json(201, { item: publicMetadata(inserted.data) });
+
+  try {
+    assertWriteAllowed(kind, await authorizeIncident(identity, incidentId));
+  } catch (failure) {
+    await cleanupUpload(admin, path, id);
+    throw failure;
+  }
+
+  try {
+    const inserted = await admin.from("incident_evidence").insert({
+      id,
+      incident_id: incidentId,
+      kind,
+      storage_path: path,
+      uploaded_by: identity.uid,
+      content_type: "image/jpeg",
+      size_bytes: bytes.byteLength
+    }).select(METADATA).single();
+
+    if (!inserted.error && inserted.data) {
+      return json(201, { item: publicMetadata(inserted.data) });
+    }
+    // PostgreSQL explicitly rejected this insert. Only compensate our own object.
+    if (inserted.error?.code === "23505") {
+      await cleanupUpload(admin, path, id);
+      throw new ApiError(409, "EVIDENCE_ALREADY_EXISTS");
+    }
+    if (["23502", "23503", "23514", "42501"].includes(inserted.error?.code ?? "")) {
+      await cleanupUpload(admin, path, id);
+      throw new ApiError(503, "EVIDENCE_METADATA_FAILED");
+    }
+  } catch (failure) {
+    if (failure instanceof ApiError) throw failure;
+    // The network can fail after PostgreSQL commits. Inspect this operation's ID.
+  }
+  try {
+    const found = await admin.from("incident_evidence").select("id,incident_id,kind,uploaded_by,size_bytes,created_at,storage_path")
+      .eq("incident_id", incidentId).eq("id", id).maybeSingle();
+    if (!found.error && found.data?.storage_path === path && found.data.uploaded_by === identity.uid
+        && found.data.kind === kind && found.data.size_bytes === bytes.byteLength) {
+      return json(201, { item: publicMetadata(found.data) });
+    }
+  } catch {
+    // An inconclusive read is not proof that the transaction rolled back.
+  }
+  console.error("evidence-metadata-reconciliation-required", id);
+  throw new ApiError(503, "EVIDENCE_METADATA_UNCONFIRMED");
 }
 
 Deno.serve(async (req) => {
