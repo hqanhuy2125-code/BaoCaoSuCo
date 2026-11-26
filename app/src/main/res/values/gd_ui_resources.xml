@@ -40,8 +40,8 @@
     <string name="error_loading">Đã có lỗi xảy ra khi tải dữ liệu</string>
     <string name="filter_all">Tất cả</string>
     <string name="filter_completed">Đã hoàn thành</string>
-    <string name="filter_overdue">Quá hạn</string>
-    <string name="filter_pending">Mới</string>
+    <string name="filter_overdue">Quá hạn (&gt;24h)</string>
+    <string name="filter_pending">Chờ tiếp nhận</string>
     <string name="filter_processing">Đang xử lý</string>
     <string name="incident_desc_hint">Mô tả chi tiết sự cố và tình trạng hiện tại</string>
     <string name="incident_detail_title">Chi Tiết Báo Cáo Sự Cố</string>

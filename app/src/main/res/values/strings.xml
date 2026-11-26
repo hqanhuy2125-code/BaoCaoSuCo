@@ -1,3 +1,32 @@
 <resources>
     <string name="app_name">BaoCaoSuCo</string>
+
+    <!-- Phuc UI strings (import) -->
+    <string name="app_subtitle">Hệ thống phản ánh &amp; xử lý sự cố căn hộ</string>
+    <string name="login_title">Đăng Nhập System</string>
+    <string name="login_subtitle">Quản lý &amp; Báo cáo sự cố trọ/chung cư</string>
+    <string name="email_hint">Địa chỉ Email</string>
+    <string name="password_hint">Mật khẩu</string>
+    <string name="full_name_hint">Họ và tên</string>
+    <string name="room_number_hint">Số phòng / Số căn hộ (Ví dụ: P.302)</string>
+    <string name="btn_login">ĐĂNG NHẬP</string>
+    <string name="btn_register">ĐĂNG KÝ TÀI KHOẢN</string>
+    <string name="btn_google_signin">Đăng nhập bằng Google</string>
+    <string name="btn_google_register">Đăng ký nhanh bằng Google</string>
+    <string name="switch_to_register">Chưa có tài khoản? Đăng ký ngay</string>
+    <string name="switch_to_login">Đã có tài khoản? Đăng nhập ngay</string>
+    <string name="role_resident">Cư Dân (Resident)</string>
+    <string name="role_manager">Quản Lý (Manager)</string>
+    <string name="select_role_label">Vai trò tài khoản:</string>
+    <string name="or_divider">Hoặc</string>
+    <string name="nav_projects">Dự án</string>
+    <string name="submitting_loading">Đang gửi báo cáo...</string>
+    <string name="assigned_handler">Kỹ thuật viên phụ trách:</string>
+    <string name="select_technician">-- Chọn kỹ thuật viên phụ trách --</string>
+    <string name="invalid_email">Vui lòng nhập địa chỉ Email hợp lệ!</string>
+    <string name="invalid_password">Mật khẩu phải từ 6 ký tự trở lên!</string>
+    <string name="fill_all_fields">Vui lòng điền đầy đủ các thông tin yêu cầu!</string>
+    <string name="incident_created_success">Tạo báo cáo sự cố thành công!</string>
+    <string name="status_updated_success">Đã cập nhật trạng thái sự cố thành công!</string>
+    <string name="feedback_submitted">Cảm ơn bạn đã gửi phản hồi!</string>
 </resources>

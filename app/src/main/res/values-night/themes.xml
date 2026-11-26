@@ -1,11 +1,24 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Base.Theme.BaoCaoSuCo" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your dark theme here. -->
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorPrimaryDark">@color/primary_dark</item>
-        <item name="colorSecondary">@color/accent</item>
-        <item name="android:statusBarColor">@color/primary_dark</item>
+        <item name="colorPrimary">@color/pink_soft</item>
+        <item name="colorOnPrimary">@color/bg_dark</item>
+        <item name="colorPrimaryContainer">#3A232E</item>
+        <item name="colorOnPrimaryContainer">@color/pink_soft</item>
+
+        <item name="colorSecondary">@color/blue_soft</item>
+        <item name="colorOnSecondary">@color/bg_dark</item>
+        <item name="colorSecondaryContainer">#1A2A40</item>
+        <item name="colorOnSecondaryContainer">@color/blue_soft</item>
+
+        <item name="android:colorBackground">@color/bg_dark</item>
+        <item name="colorSurface">@color/surface_dark</item>
+        <item name="colorOnSurface">@color/text_primary_dark</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary_dark</item>
+
+        <item name="android:statusBarColor">@color/transparent</item>
         <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+
+        <item name="colorPrimaryDark">@color/primary_dark</item>
     </style>
 </resources>

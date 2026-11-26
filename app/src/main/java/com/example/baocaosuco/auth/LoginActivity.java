@@ -3,6 +3,7 @@ package com.example.baocaosuco.auth;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Patterns;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -23,15 +24,23 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.auth_login);
+        setContentView(R.layout.activity_login);
 
-        etEmail    = findViewById(R.id.auth_login_email);
-        etPassword = findViewById(R.id.auth_login_password);
-        btnLogin   = findViewById(R.id.auth_login_btn);
+        etEmail    = findViewById(R.id.et_email);
+        etPassword = findViewById(R.id.et_password);
+        btnLogin   = findViewById(R.id.btn_action);
+
+        // UI Phuc gop dang nhap/dang ky: che phan chi dung cho dang ky va Google (chua co BE)
+        findViewById(R.id.til_name).setVisibility(View.GONE);
+        findViewById(R.id.til_room).setVisibility(View.GONE);
+        findViewById(R.id.btn_google_auth).setVisibility(View.GONE);
+        ((TextView) findViewById(R.id.tv_form_title)).setText(R.string.auth_title_login);
+        btnLogin.setText(R.string.auth_btn_login);
 
         btnLogin.setOnClickListener(v -> attemptLogin());
 
-        TextView linkRegister = findViewById(R.id.auth_login_link_register);
+        TextView linkRegister = findViewById(R.id.tv_switch_mode);
+        linkRegister.setText(R.string.auth_link_go_register);
         linkRegister.setOnClickListener(v -> {
             startActivity(new Intent(this, RegisterActivity.class));
         });

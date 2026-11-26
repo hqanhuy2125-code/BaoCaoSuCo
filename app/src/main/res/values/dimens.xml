@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Standardized Spacing Scale -->
+    <dimen name="spacing_xl">20dp</dimen>
+    <dimen name="spacing_3xl">32dp</dimen>
+
+    <!-- Standardized Corner Radii -->
+    <dimen name="radius_s">8dp</dimen>
+    <dimen name="radius_xl">20dp</dimen>
+    <dimen name="radius_pill">28dp</dimen>
+
+    <!-- Typography Scale -->
+    <dimen name="text_screen_title">20sp</dimen>
+    <dimen name="text_card_title">14sp</dimen>
+
+    <!-- Icon & Component Sizes -->
+    <dimen name="icon_size_l">24dp</dimen>
+    <dimen name="icon_size_xl">32dp</dimen>
+    <dimen name="touch_target_min">48dp</dimen>
+</resources>
