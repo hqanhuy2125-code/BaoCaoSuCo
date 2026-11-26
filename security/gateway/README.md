@@ -153,19 +153,24 @@ observed on either refresh is denied. Firestore can still change after the last
 read. There is no cross-cloud transaction or lock, so residual races must be
 accepted by the reviewer/Owner before enabling writes.
 
-## Staging checklist — values supplied by Owner
+## Shared Photo QA approval and acceptance checklist
 
-- Isolated Supabase and Firebase projects, no production data. The Owner supplies
-  the actual project references and authorizes deployment of the exact accepted
-  bundle. Production is not a staging substitute.
-- Set EVIDENCE_FIREBASE_PROJECT_ID to the approved staging Firebase project ID
-  and use its server-side FIREBASE_WEB_API_KEY. Confirm issuer/audience and the
-  key's Identity Toolkit restrictions. Configure secrets through the owner path,
-  never Git or an Android resource. Platform verify_jwt is false only because
-  the handler verifies Firebase tokens itself.
-- Verify the bucket is private, JPEG-only, 2 MiB; confirm uniqueness, RLS and
-  no direct anon/authenticated grants. Keeping the gate unset or false must
-  deny a valid token before accounts:lookup, Firestore or Storage.
-- Obtain independent L3 review on the exact SHA, staging signoff and an explicit
-  bounded-synthetic-write approval. Use disposable accounts for revocation,
-  disable/delete and role/ownership checks. No changes to production accounts.
+- Record independent L3 approval on the exact candidate SHA and explicit Owner
+  authorization to deploy it to Supabase staging. The QA scope uses the exact
+  Supabase/Firebase pair above. All permitted Firebase users and incidents must
+  be designated QA records.
+- Configure the Firebase Web API key only server-side. Verify the Firebase
+  issuer, audience and the key's Identity Toolkit restrictions. Set platform verify_jwt=false for this function. The gateway verifies Firebase tokens itself.
+- Verify the private JPEG-only 2 MiB bucket, metadata uniqueness, RLS and direct
+  client grants. Deploy with the access flag false. Check that a valid Firebase
+  token receives 503 EVIDENCE_GATE_NOT_APPROVED, and a missing token receives
+  401. Neither request should reach account lookup, Firestore or Storage.
+- Before enabling access, record the exact QA UIDs, incidents, synthetic JPEG
+  limit and cleanup scope in the Owner's restricted approval record. A proposed
+  scope is one eligible QA incident and up to two private synthetic objects:
+  Resident REPORTED and Manager RESOLUTION. Restrict cleanup to objects and rows
+  created by this run. For orphan candidates, follow the reconciliation rules
+  above and confirm there is no referencing metadata before deleting bytes.
+- Obtain separate authorization for any new QA incident or action on disposable
+  Firebase accounts (revocation, disable or delete). Preserve existing Firebase
+  users and unrelated incidents. Close staging access again once acceptance ends.
