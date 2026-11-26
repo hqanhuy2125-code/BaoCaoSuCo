@@ -83,10 +83,10 @@ public class CreateIncidentFragment extends Fragment implements ResidentIncident
                 if (photoViewBinder != null) photoViewBinder.onCancelled(source);
             }
             @Override public void onPickerError(IncidentPhotoController.Source source, IncidentPhotoController.Error error) {
-                onPickerError(source, error);
+                CreateIncidentFragment.this.onPickerError(source, error);
             }
             @Override public void onProcessingError(IncidentPhotoProcessor.Failure error) {
-                onProcessingError(error);
+                CreateIncidentFragment.this.onProcessingError(error);
             }
         });
 
