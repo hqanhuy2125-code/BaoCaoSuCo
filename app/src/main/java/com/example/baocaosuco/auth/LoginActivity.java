@@ -10,6 +10,10 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.example.baocaosuco.MainActivity;
 import com.example.baocaosuco.R;
@@ -24,7 +28,17 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_login);
+
+        // Keep the end of the scrollable form above the IME and navigation bar.
+        View loginForm = findViewById(R.id.main);
+        ViewCompat.setOnApplyWindowInsetsListener(loginForm, (view, insets) -> {
+            Insets safeArea = insets.getInsets(WindowInsetsCompat.Type.systemBars()
+                    | WindowInsetsCompat.Type.displayCutout() | WindowInsetsCompat.Type.ime());
+            view.setPadding(safeArea.left, safeArea.top, safeArea.right, safeArea.bottom);
+            return insets;
+        });
 
         etEmail    = findViewById(R.id.et_email);
         etPassword = findViewById(R.id.et_password);
