@@ -9,5 +9,30 @@
     <color name="text_primary">#FF1F2937</color>
     <color name="text_secondary">#FF6B7280</color>
     <color name="overdue_red">#FFD32F2F</color>
-    <color name="bg_light">#FFF8FAFC</color>
+    <color name="bg_light">#F8F9FA</color>
+
+    <!-- Phuc UI palette (import) -->
+    <color name="pink_light">#FFF0F3</color>
+    <color name="pink_soft">#F48FB1</color>
+    <color name="blue_dark">#2E86DE</color>
+    <color name="blue_light">#A8E5F8</color>
+    <color name="blue_soft">#74B9FF</color>
+    <color name="status_processing_text">#B78103</color>
+    <color name="accent_warning">#F4B400</color>
+    <color name="status_completed">#2E7D32</color>
+    <color name="status_completed_bg">#202E7D32</color>
+    <color name="status_completed_text">#1B5E20</color>
+    <color name="surface_light">#FFFFFF</color>
+    <color name="nav_bar_bg_light">#EEF2F6</color>
+    <color name="card_border_light">#1A000000</color>
+    <color name="text_primary_light">#1A202C</color>
+    <color name="text_secondary_light">#718096</color>
+    <color name="bg_dark">#121824</color>
+    <color name="surface_dark">#1E2738</color>
+    <color name="nav_bar_bg_dark">#1E2738</color>
+    <color name="card_border_dark">#2C3A52</color>
+    <color name="text_primary_dark">#F1F2F6</color>
+    <color name="text_secondary_dark">#A4B0BE</color>
+    <color name="transparent">#00000000</color>
+    <color name="divider_color">#E2E8F0</color>
 </resources>
