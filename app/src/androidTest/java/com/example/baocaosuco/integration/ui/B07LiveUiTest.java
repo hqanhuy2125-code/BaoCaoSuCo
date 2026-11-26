@@ -734,9 +734,9 @@ public class B07LiveUiTest {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK);
         activity = inst.startActivitySync(intent);
         main(() -> {
-            ((EditText)activity.findViewById(R.id.auth_login_email)).setText(config.getProperty(prefix+"Email"));
-            ((EditText)activity.findViewById(R.id.auth_login_password)).setText(config.getProperty(prefix+"Password"));
-            activity.findViewById(R.id.auth_login_btn).performClick();
+            ((EditText) loginView("et_email", R.id.auth_login_email)).setText(config.getProperty(prefix+"Email"));
+            ((EditText) loginView("et_password", R.id.auth_login_password)).setText(config.getProperty(prefix+"Password"));
+            loginView("btn_action", R.id.auth_login_btn).performClick();
         });
         resumed(expected);
         if (expected == ResidentMainActivity.class) {
@@ -748,6 +748,14 @@ public class B07LiveUiTest {
                     && ((TextView) activity.findViewById(R.id.tv_header_resident_name)).length() > 0,
                     "Verified Manager role");
         }
+    }
+
+    private View loginView(String currentName, int legacyId) {
+        int currentId = activity.getResources().getIdentifier(currentName, "id", activity.getPackageName());
+        View view = currentId == 0 ? null : activity.findViewById(currentId);
+        if (view == null) view = activity.findViewById(legacyId);
+        assertNotNull("Login control missing: " + currentName, view);
+        return view;
     }
 
     private void openForm() throws Exception {
