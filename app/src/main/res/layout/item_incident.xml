@@ -150,7 +150,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:text="Kỹ thuật: Anh Nam"
-                android:textColor="@color/blue_primary"
+                android:textColor="@color/f7_link"
                 android:textSize="@dimen/text_secondary"
                 android:textStyle="bold" />
         </LinearLayout>

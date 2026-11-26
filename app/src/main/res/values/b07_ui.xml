@@ -1,0 +1,8 @@
+<resources>
+    <color name="status_overdue_text">#B71C1C</color>
+    <item type="id" name="chip_mgr_assigned" />
+    <item type="id" name="chip_mgr_closed" />
+    <item type="id" name="photo_capture" />
+    <item type="id" name="photo_gallery" />
+    <item type="id" name="incident_form_message" />
+</resources>

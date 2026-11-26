@@ -12,11 +12,9 @@ import com.example.baocaosuco.R;
 import com.example.baocaosuco.data.incident.IncidentSnapshot;
 import com.example.baocaosuco.manager.ManagerIncidentCoordinator;
 
-import java.text.SimpleDateFormat;
+import com.example.baocaosuco.integration.ui.IncidentUiText;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
 public class IncidentAdapter extends RecyclerView.Adapter<IncidentAdapter.ViewHolder> {
 
@@ -85,9 +83,11 @@ public class IncidentAdapter extends RecyclerView.Adapter<IncidentAdapter.ViewHo
             tvLocation.setText(item.getLocation() != null ? item.getLocation() : "");
 
             String priority = item.getPriority();
-            tvPriorityBadge.setText(priority);
+            tvPriorityBadge.setText(IncidentUiText.priority(priority));
+            IncidentUiText.applyPriorityBadge(tvPriorityBadge, priority);
 
-            tvStatusBadge.setText(item.getStatusCode());
+            tvStatusBadge.setText(IncidentUiText.status(item.getStatus()));
+            IncidentUiText.applyStatusBadge(tvStatusBadge, item.getStatus());
 
             boolean overdue = ManagerIncidentCoordinator.isOverdue(item, System.currentTimeMillis());
             if (overdue) {
@@ -96,8 +96,8 @@ public class IncidentAdapter extends RecyclerView.Adapter<IncidentAdapter.ViewHo
                 tvOverdueBadge.setVisibility(View.GONE);
             }
 
-            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
-            tvTimestamp.setText(sdf.format(new Date(item.getCreatedAtMillis())));
+            tvTimestamp.setText(IncidentUiText.time(item.getCreatedAtMillis())
+                    + "\nHạn: " + IncidentUiText.time(item.getDueAtMillis()));
 
             String handler = item.getAssignedTo();
             if (handler != null && !handler.trim().isEmpty()) {

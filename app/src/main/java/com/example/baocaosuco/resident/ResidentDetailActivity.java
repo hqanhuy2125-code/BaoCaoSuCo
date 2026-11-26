@@ -4,11 +4,16 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.TextView;
-import android.widget.Toast;
+import android.view.LayoutInflater;
+import android.view.ViewGroup;
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.LinearLayoutManager;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.baocaosuco.R;
+import com.example.baocaosuco.resident.photo.EvidencePanel;
 import com.example.baocaosuco.data.incident.IncidentHistorySnapshot;
 import com.example.baocaosuco.data.incident.IncidentSnapshot;
 import com.example.baocaosuco.data.repository.FirebaseIncidentRepository;
@@ -17,10 +22,8 @@ import com.example.baocaosuco.logic.IncidentStatus;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import com.example.baocaosuco.integration.ui.IncidentUiText;
 import java.util.List;
-import java.util.Locale;
 
 public class ResidentDetailActivity extends AppCompatActivity implements ResidentIncidentCoordinator.View {
 
@@ -28,10 +31,15 @@ public class ResidentDetailActivity extends AppCompatActivity implements Residen
     private TextView tvDetailPriority, tvDetailStatus, tvDetailTitle, tvDetailLocation, tvDetailCreatedAt, tvDetailDesc, tvDetailHandler;
     private MaterialCardView cardResidentConfirm;
     private MaterialButton btnConfirmDone, btnConfirmNotDone;
-    private TextView tvFeedbackStatus;
+    private TextView message;
+    private RecyclerView timeline;
+    private View retry;
+    private boolean busy;
+    private boolean needsReload;
 
     private ResidentIncidentCoordinator coordinator;
     private String incidentId;
+    private EvidencePanel evidence;
     private IncidentSnapshot currentIncident;
 
     @Override
@@ -39,6 +47,8 @@ public class ResidentDetailActivity extends AppCompatActivity implements Residen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_resident_detail);
 
+        IncidentUiText.applyInsets(this, findViewById(R.id.main));
+        evidence = new EvidencePanel(findViewById(R.id.incident_evidence_panel));
         incidentId = getIntent().getStringExtra("incident_id");
 
         btnBack = findViewById(R.id.btn_back);
@@ -52,34 +62,44 @@ public class ResidentDetailActivity extends AppCompatActivity implements Residen
         cardResidentConfirm = findViewById(R.id.card_resident_confirm);
         btnConfirmDone = findViewById(R.id.btn_confirm_done);
         btnConfirmNotDone = findViewById(R.id.btn_confirm_not_done);
-        tvFeedbackStatus = findViewById(R.id.tv_feedback_status);
+        message = findViewById(R.id.incident_message);
+        retry = findViewById(R.id.incident_retry);
+        timeline = findViewById(R.id.rv_timeline_events);
+        timeline.setLayoutManager(new LinearLayoutManager(this));
+        timeline.setNestedScrollingEnabled(false);
+        findViewById(R.id.layout_static_steps).setVisibility(View.GONE);
+        findViewById(R.id.layout_timeline_events).setVisibility(View.GONE);
+        findViewById(R.id.card_incident_summary).setVisibility(View.GONE);
+        findViewById(R.id.card_incident_timeline).setVisibility(View.GONE);
+        cardResidentConfirm.setVisibility(View.GONE);
 
         btnBack.setOnClickListener(v -> finish());
 
         coordinator = new ResidentIncidentCoordinator(new FirebaseIncidentRepository().resident(), this);
 
         btnConfirmDone.setOnClickListener(v -> {
-            if (currentIncident != null) {
+            if (!busy && !needsReload && currentIncident != null) {
                 coordinator.confirm(currentIncident, true);
             }
         });
 
         btnConfirmNotDone.setOnClickListener(v -> {
-            if (currentIncident != null) {
+            if (!busy && !needsReload && currentIncident != null) {
                 coordinator.confirm(currentIncident, false);
             }
         });
 
+        retry.setOnClickListener(v -> coordinator.loadDetail(incidentId));
         if (incidentId != null) {
             coordinator.loadDetail(incidentId);
         } else {
-            Toast.makeText(this, "Không tìm thấy mã sự cố", Toast.LENGTH_SHORT).show();
-            finish();
+            onError(IncidentRepository.Error.NOT_FOUND);
         }
     }
 
     @Override
     protected void onDestroy() {
+        evidence.close();
         super.onDestroy();
         if (coordinator != null) {
             coordinator.close();
@@ -88,7 +108,10 @@ public class ResidentDetailActivity extends AppCompatActivity implements Residen
 
     @Override
     public void onBusy(boolean busy) {
-        // Optional loading indicator
+        this.busy = busy;
+        setActionsEnabled(!busy && !needsReload);
+        retry.setEnabled(!busy);
+        showMessage(busy ? "Đang tải hoặc lưu…" : null);
     }
 
     @Override
@@ -99,39 +122,116 @@ public class ResidentDetailActivity extends AppCompatActivity implements Residen
     @Override
     public void onDetail(IncidentSnapshot incident, List<IncidentHistorySnapshot> history) {
         currentIncident = incident;
+        evidence.showIncident(incident.getId());
+        needsReload = false;
+        retry.setVisibility(View.GONE);
+        showMessage(null);
+        findViewById(R.id.card_incident_summary).setVisibility(View.VISIBLE);
+        findViewById(R.id.card_incident_timeline).setVisibility(View.VISIBLE);
         tvDetailTitle.setText(incident.getTitle());
         tvDetailLocation.setText("Vị trí: " + incident.getLocation());
-        tvDetailPriority.setText(incident.getPriority());
-        tvDetailStatus.setText(incident.getStatusCode());
+        tvDetailPriority.setText(IncidentUiText.priority(incident.getPriority()));
+        tvDetailStatus.setText(IncidentUiText.status(incident.getStatus()));
+        IncidentUiText.applyStatusBadge(tvDetailStatus, incident.getStatus());
+        IncidentUiText.applyPriorityBadge(tvDetailPriority, incident.getPriority());
         tvDetailDesc.setText(incident.getDescription());
+        tvDetailCreatedAt.setText("Thời gian gửi: " + IncidentUiText.time(incident.getCreatedAtMillis()));
+        boolean overdue = com.example.baocaosuco.manager.ManagerIncidentCoordinator.isOverdue(
+                incident, System.currentTimeMillis());
+        tvDetailHandler.setText("Người xử lý: "
+                + (incident.getAssignedTo() == null ? "Chưa phân công" : incident.getAssignedTo())
+                + "\nHạn xử lý: " + IncidentUiText.time(incident.getDueAtMillis())
+                + (overdue ? "\nĐã quá hạn xử lý" : ""));
+        timeline.setAdapter(new TimelineAdapter(history));
+        cardResidentConfirm.setVisibility(incident.getStatus() == IncidentStatus.COMPLETED
+                ? View.VISIBLE : View.GONE);
+        setActionsEnabled(!busy);
+    }
 
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm - dd/MM/yyyy", Locale.getDefault());
-        tvDetailCreatedAt.setText("Thời gian gửi: " + sdf.format(new Date(incident.getCreatedAtMillis())));
+    private void setActionsEnabled(boolean enabled) {
+        btnConfirmDone.setEnabled(enabled);
+        btnConfirmNotDone.setEnabled(enabled);
+    }
 
-        String handler = incident.getAssignedTo();
-        if (handler != null && !handler.trim().isEmpty()) {
-            tvDetailHandler.setText("Kỹ thuật viên phụ trách: " + handler);
-            tvDetailHandler.setVisibility(View.VISIBLE);
-        } else {
-            tvDetailHandler.setVisibility(View.GONE);
-        }
-
-        if (incident.getStatus() == IncidentStatus.COMPLETED) {
-            cardResidentConfirm.setVisibility(View.VISIBLE);
-        } else {
-            cardResidentConfirm.setVisibility(View.GONE);
-        }
+    private void showMessage(String text) {
+        message.setText(text);
+        message.setVisibility(text == null ? View.GONE : View.VISIBLE);
     }
 
     @Override
     public void onSaved(IncidentSnapshot incident) {
-        Toast.makeText(this, "Cập nhật thành công", Toast.LENGTH_SHORT).show();
-        currentIncident = incident;
-        onDetail(incident, null);
+        setResult(RESULT_OK);
+        coordinator.loadDetail(incident.getId());
     }
 
     @Override
     public void onError(IncidentRepository.Error error) {
-        Toast.makeText(this, "Lỗi: " + error, Toast.LENGTH_SHORT).show();
+        needsReload = true;
+        setActionsEnabled(false);
+        if (error == IncidentRepository.Error.PERMISSION_DENIED
+                || error == IncidentRepository.Error.AUTH_REQUIRED
+                || error == IncidentRepository.Error.NOT_FOUND) {
+            currentIncident = null;
+            evidence.hide();
+            findViewById(R.id.card_incident_summary).setVisibility(View.GONE);
+            findViewById(R.id.card_incident_timeline).setVisibility(View.GONE);
+            cardResidentConfirm.setVisibility(View.GONE);
+        }
+        retry.setVisibility(incidentId == null ? View.GONE : View.VISIBLE);
+        showMessage(IncidentUiText.error(error));
+    }
+
+    private static final class TimelineAdapter extends RecyclerView.Adapter<TimelineHolder> {
+        private final List<IncidentHistorySnapshot> events;
+
+        TimelineAdapter(List<IncidentHistorySnapshot> events) {
+            this.events = events;
+        }
+
+        @NonNull @Override
+        public TimelineHolder onCreateViewHolder(@NonNull ViewGroup parent, int type) {
+            return new TimelineHolder(LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_timeline_event, parent, false));
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull TimelineHolder holder, int position) {
+            IncidentHistorySnapshot event = events.get(position);
+            String from = event.getFromStatus() == null ? ""
+                    : IncidentUiText.status(event.getFromStatus()) + " → ";
+            holder.set(R.id.tv_timeline_action, action(event.getAction().name()));
+            holder.set(R.id.tv_timeline_status, from + IncidentUiText.status(event.getToStatus()));
+            IncidentUiText.applyStatusBadge(holder.itemView.findViewById(R.id.tv_timeline_status), event.getToStatus());
+            holder.set(R.id.tv_timeline_timestamp, IncidentUiText.time(event.getOccurredAtMillis()));
+            // No user-directory lookup is in the incident contract.
+            holder.itemView.findViewById(R.id.tv_timeline_actor).setVisibility(View.GONE);
+            holder.set(R.id.tv_timeline_note, event.getNote());
+            holder.itemView.findViewById(R.id.tv_timeline_note).setVisibility(
+                    event.getNote() == null || event.getNote().isEmpty() ? View.GONE : View.VISIBLE);
+            holder.itemView.findViewById(R.id.view_timeline_line).setVisibility(
+                    position + 1 == events.size() ? View.GONE : View.VISIBLE);
+        }
+
+        private static String action(String code) {
+            switch (code) {
+                case "CREATE": return "Tạo báo cáo";
+                case "ASSIGN": return "Phân công";
+                case "START_WORK": return "Bắt đầu xử lý";
+                case "MARK_COMPLETE": return "Đánh dấu hoàn tất";
+                case "CONFIRM_RESOLVED": return "Xác nhận đã giải quyết";
+                case "REPORT_UNRESOLVED": return "Báo chưa giải quyết";
+                default: return code;
+            }
+        }
+
+        @Override public int getItemCount() { return events.size(); }
+    }
+
+    private static final class TimelineHolder extends RecyclerView.ViewHolder {
+        TimelineHolder(View item) { super(item); }
+
+        void set(int id, String value) {
+            ((TextView) itemView.findViewById(id)).setText(value);
+        }
     }
 }

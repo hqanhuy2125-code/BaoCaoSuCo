@@ -1,0 +1,21 @@
+<resources>
+    <color name="f7_nav">#2D3436</color>
+    <color name="f7_nav_active">#A82347</color>
+    <color name="f7_link">#18579B</color>
+    <color name="f7_warning">#A23231</color>
+    <color name="f7_outline">#746D79</color>
+    <color name="f7_action_pink">#A52549</color>
+    <color name="f7_action_blue">#245A98</color>
+    <color name="f7_action_green">#296638</color>
+    <color name="f7_new_fg">#A12841</color>
+    <color name="f7_new_bg">#FDE1E7</color>
+    <color name="f7_assigned_fg">#18579B</color>
+    <color name="f7_assigned_bg">#DAEAFE</color>
+    <color name="f7_progress_fg">#715000</color>
+    <color name="f7_progress_bg">#FFF0BF</color>
+    <color name="f7_completed_fg">#216139</color>
+    <color name="f7_completed_bg">#DCF3E5</color>
+    <color name="f7_closed_fg">#544477</color>
+    <color name="f7_closed_bg">#EAE3F7</color>
+    <item name="f7_manager_sort" type="id" />
+</resources>

@@ -2,10 +2,12 @@ package com.example.baocaosuco.resident.photo;
 
 import android.content.ContentResolver;
 import android.content.Context;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.example.baocaosuco.R;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -47,7 +49,7 @@ public final class SupabaseEvidenceClient {
     public enum Error {
         AUTH_REQUIRED, CONFIG_MISMATCH, VALIDATION, TOO_LARGE,
         PERMISSION_DENIED, NOT_FOUND, CONFLICT, GATE_DISABLED,
-        NETWORK, SERVER_ERROR
+        NETWORK, SERVER_ERROR, NOT_CONFIGURED, UNCONFIRMED
     }
 
     public interface Callback<T> {
@@ -81,9 +83,6 @@ public final class SupabaseEvidenceClient {
         public String getCreatedAt() { return createdAt; }
     }
 
-    private static final String FIREBASE_PROJECT_ID = "baocaosuco-c4ccc";
-    private static final String GATEWAY =
-            "https://xnmlnqaetcaawvsbmhjy.supabase.co/functions/v1/evidence-gateway";
     private static final String PHOTO_AUTHORITY = ".incidentphoto.fileprovider";
     private static final String PHOTO_PREFIX = "/incident_camera/incident_ready_";
     private static final int NETWORK_TIMEOUT_MS = 15000;
@@ -91,6 +90,10 @@ public final class SupabaseEvidenceClient {
 
     private final Context appContext;
     private final FirebaseAuth auth;
+    private final EvidenceEndpoint endpoint;
+    private final File downloadDir;
+    private final String sessionUid;
+    private final FirebaseAuth.AuthStateListener authListener;
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
     private volatile boolean closed;
@@ -105,6 +108,18 @@ public final class SupabaseEvidenceClient {
         }
         this.appContext = context.getApplicationContext();
         this.auth = auth;
+        endpoint = EvidenceEndpoint.resolve(context.getString(R.string.evidence_environment),
+                context.getString(R.string.evidence_approved_staging_ref),
+                context.getString(R.string.evidence_approved_staging_firebase),
+                (context.getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0);
+        downloadDir = new File(new File(appContext.getCacheDir(), "c01_evidence_remote"),
+                java.util.UUID.randomUUID().toString());
+        FirebaseUser user = auth.getCurrentUser();
+        sessionUid = user == null ? null : user.getUid();
+        authListener = source -> {
+            if (sessionUid != null && !sameSession(sessionUid)) close();
+        };
+        auth.addAuthStateListener(authListener);
     }
 
     private interface Work<T> {
@@ -199,13 +214,17 @@ public final class SupabaseEvidenceClient {
             fail(callback, Error.CONFIG_MISMATCH);
             return false;
         }
-        if (!FIREBASE_PROJECT_ID.equals(actualProject)) {
+        if (endpoint == null) {
+            fail(callback, Error.NOT_CONFIGURED);
+            return false;
+        }
+        if (!endpoint.firebaseProject.equals(actualProject)) {
             fail(callback, Error.CONFIG_MISMATCH);
             return false;
         }
 
         FirebaseUser user = auth.getCurrentUser();
-        if (user == null) {
+        if (user == null || !user.getUid().equals(sessionUid)) {
             fail(callback, Error.AUTH_REQUIRED);
             return false;
         }
@@ -239,6 +258,8 @@ public final class SupabaseEvidenceClient {
                         if (!closed && sameSession(actor)) {
                             if (reported == null) callback.onSuccess(delivered);
                             else callback.onError(reported);
+                        } else if (delivered instanceof Uri) {
+                            clearDownloaded();
                         }
                     });
                 });
@@ -299,7 +320,7 @@ public final class SupabaseEvidenceClient {
 
     private HttpsURLConnection connection(String query, String token, String method)
             throws IOException {
-        URL url = new URL(GATEWAY + query);
+        URL url = new URL(endpoint.gateway + query);
         HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
         conn.setInstanceFollowRedirects(false);
         conn.setRequestMethod(method);
@@ -349,6 +370,14 @@ public final class SupabaseEvidenceClient {
                 if (!IncidentEvidenceRequestPolicy.validJpeg(jpeg)) {
                     throw new GatewayFailure(Error.SERVER_ERROR);
                 }
+                BitmapFactory.Options bounds = new BitmapFactory.Options();
+                bounds.inJustDecodeBounds = true;
+                BitmapFactory.decodeByteArray(jpeg, 0, jpeg.length, bounds);
+                int limit = IncidentPhotoPolicy.MAX_OUTPUT_SIDE;
+                if (bounds.outWidth < 1 || bounds.outHeight < 1
+                        || bounds.outWidth > limit || bounds.outHeight > limit) {
+                    throw new GatewayFailure(Error.SERVER_ERROR);
+                }
                 return jpeg;
             }
         } finally {
@@ -371,6 +400,9 @@ public final class SupabaseEvidenceClient {
                     JSONObject body = new JSONObject(new String(json, StandardCharsets.UTF_8));
                     if ("EVIDENCE_GATE_NOT_APPROVED".equals(body.optString("error"))) {
                         return new GatewayFailure(Error.GATE_DISABLED);
+                    }
+                    if ("EVIDENCE_METADATA_UNCONFIRMED".equals(body.optString("error"))) {
+                        return new GatewayFailure(Error.UNCONFIRMED);
                     }
                 }
             } catch (Exception ignored) { }
@@ -399,28 +431,23 @@ public final class SupabaseEvidenceClient {
     }
 
     private File ensureDownloadDir() throws IOException {
-        File dir = new File(appContext.getCacheDir(), "c01_evidence_remote");
-        if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Cache unavailable");
-        return dir;
+        if (!downloadDir.isDirectory() && !downloadDir.mkdirs()) throw new IOException("Cache unavailable");
+        return downloadDir;
     }
 
-    /** Remove app-private downloaded previews at logout/Activity exit. */
+    /** This client may delete only its own private download files. */
     public void clearDownloaded() {
-        File dir = new File(appContext.getCacheDir(), "c01_evidence_remote");
-        File[] files = dir.listFiles();
-        if (files == null) return;
-        for (File file : files) {
-            String name = file.getName();
-            if (file.isFile() && name.startsWith("evidence_") && name.endsWith(".jpg")
-                    && name.indexOf("..") < 0) {
-                file.delete();
-            }
+        File[] files = downloadDir.listFiles();
+        if (files != null) {
+            for (File file : files) file.delete();
         }
+        downloadDir.delete();
     }
 
     public void close() {
         if (closed) return;
         closed = true;
+        auth.removeAuthStateListener(authListener);
         worker.shutdownNow();
         clearDownloaded();
     }

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <!-- Left Node Icon Indicator -->
+        <ImageView
+            android:id="@+id/iv_timeline_dot"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_marginTop="2dp"
+            android:layout_marginEnd="12dp"
+            android:src="@drawable/ic_check_circle"
+            app:tint="@color/pink_primary"
+            android:contentDescription="Timeline status dot" />
+        <!-- Right Content Details Block -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            <!-- Action Title & Event Status Badge -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:orientation="vertical"
+                android:layout_height="wrap_content">
+                <TextView
+                    android:id="@+id/tv_timeline_action"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tạo báo cáo sự cố"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/tv_timeline_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:background="@drawable/bg_badge_pending"
+                    android:paddingStart="8dp"
+                    android:paddingTop="2dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="2dp"
+                    android:text="Chờ xử lý"
+                    android:textColor="@color/status_pending_text"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+            <!-- Actor / Executor -->
+            <TextView
+                android:id="@+id/tv_timeline_actor"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:text="👤 Người thực hiện: Nguyễn Văn An"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="12sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
+            <!-- Timestamp -->
+            <TextView
+                android:id="@+id/tv_timeline_timestamp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="🕒 Thời gian: 10:30 - 24/10/2023"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="12sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
+            <!-- Notes -->
+            <TextView
+                android:id="@+id/tv_timeline_note"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="📝 Ghi chú: Cầu chì sập và có mùi khét nhẹ"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="13sp"
+                android:lineSpacingExtra="2dp" />
+        </LinearLayout>
+    </LinearLayout>
+    <!-- Vertical Line Connector -->
+    <View
+        android:id="@+id/view_timeline_line"
+        android:layout_width="2dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="4dp"
+        android:background="?attr/colorOnSurfaceVariant"
+        android:alpha="0.3" />
+</LinearLayout>
