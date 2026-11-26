@@ -1,0 +1,21 @@
+name: C01 gateway revocation candidate (offline only)
+on:
+  pull_request:
+    paths:
+      - "security/gateway/**"
+      - ".github/workflows/c01-gateway-revocation-candidate.yml"
+permissions:
+  contents: read
+jobs:
+  revocation-unit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Offline adversarial and guard-order tests; NO cloud credentials
+        run: node --test security/gateway/revocation-check.test.mjs
