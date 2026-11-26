@@ -1,17 +1,19 @@
 /**
  * G0/G1 isolated HTTP integration harness.
  * Runs actual v2 candidate handler in a Node VM, replacing *only* platform
- * imports (jose, Supabase JS, Deno.serve) with local test adapters.
+ * Supabase and Deno.serve with local test adapters. JOSE uses the same pinned
+ * version as the candidate with a local test-only trust root.
  * Auth and Firestore REST operations traverse real loopback HTTP, never cloud.
- * No credentials, no production URL, no uploads or remote mutation.
- * Crypto fixture signs RS256 JWTs locally; jwtVerify adapter verifies RSA
- * independently, but this is NOT a real jose/Deno runtime test.
+ * No credentials, production URL or remote mutation.
+ * Write integrity cases explicitly allow an in-memory fake Storage.
+ * Crypto fixture signs RS256 JWTs locally. This does not run Supabase Edge Runtime.
  */
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
-import { generateKeyPairSync, sign, verify } from 'node:crypto';
+import { generateKeyPairSync, sign } from 'node:crypto';
+import { createLocalJWKSet, jwtVerify } from 'jose';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import vm from 'node:vm';
@@ -26,6 +28,7 @@ const fakeApiKey = 'ISOLATED_FAKE_FIREBASE_KEY';
 const now = Math.floor(Date.now() / 1000);
 const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
 const keyId = 'test-only-local-rsa-key';
+const localJwks = createLocalJWKSet({ keys: [{ ...publicKey.export({ format: 'jwk' }), kid: keyId, alg: 'RS256' }] });
 const nativeFetch = globalThis.fetch;
 let fakeServer;
 let gatewayServer;
@@ -36,6 +39,10 @@ let gateEnabled = false;
 let lookupStatus = 200;
 let badAccountShape = false;
 let firestoreStatus = 200;
+let writeFixture = false;
+let mode = '';
+let status = 'NEW';
+let records, objects, uploadBarrier;
 let stats = {};
 let accounts;
 let cases = [];
@@ -52,25 +59,6 @@ function jwt(uid, opts = {}) {
   const signature = sign('RSA-SHA256', Buffer.from(data), privateKey).toString('base64url');
   return `${data}.${signature}`;
 }
-function verifyLocalJwt(token, jwks, options) {
-  if (!jwks || jwks.marker !== 'isolated-local-jwks') throw Error('Unrecognized JWKS source');
-  const [h, p, sig, excess] = token.split('.');
-  if (!h || !p || !sig || excess) throw Error('Malformed JWT');
-  const header = JSON.parse(Buffer.from(h, 'base64url').toString());
-  const claims = JSON.parse(Buffer.from(p, 'base64url').toString());
-  if (header.alg !== 'RS256' || !options.algorithms.includes(header.alg) || header.kid !== keyId) {
-    throw Error('Untrusted JWT algorithm/key');
-  }
-  if (!verify('RSA-SHA256', Buffer.from(`${h}.${p}`), publicKey, Buffer.from(sig, 'base64url'))) {
-    throw Error('Invalid JWT signature');
-  }
-  if (claims.iss !== options.issuer || claims.aud !== options.audience ||
-      !Number.isInteger(claims.exp) || claims.exp <= now - options.clockTolerance ||
-      (typeof claims.nbf === 'number' && claims.nbf > now + options.clockTolerance)) {
-    throw Error('JWT claims invalid');
-  }
-  return { payload: claims };
-}
 const profile = (uid, role) => ({ uid, role, validSince: String(now - 3600), disabled: false });
 function reset() {
   accounts = new Map([
@@ -82,6 +70,12 @@ function reset() {
   badAccountShape = false;
   firestoreStatus = 200;
   gateEnabled = false;
+  writeFixture = false;
+  mode = '';
+  status = 'NEW';
+  records = new Map();
+  objects = new Set();
+  uploadBarrier = null;
   stats = { lookups: 0, firestore: 0, admin: 0, external: 0, uploads: 0 };
 }
 reset();
@@ -133,7 +127,7 @@ async function firebaseHttp(req, res) {
     if (!ownerId || (caller.role !== 'MANAGER' && ownerId !== uid)) {
       return respond(res, 403, { error: 'PERMISSION_DENIED' });
     }
-    return respond(res, 200, { fields: { residentId: { stringValue: ownerId }, status: { stringValue: 'NEW' } } });
+    return respond(res, 200, { fields: { residentId: { stringValue: ownerId }, status: { stringValue: status } } });
   }
   return respond(res, 404, { error: 'LOCAL_UNKNOWN_HOST' });
 }
@@ -144,15 +138,51 @@ function fakeAdminClient(url, secret) {
   return {
     from(table) {
       assert.equal(table, 'incident_evidence');
+      let row;
+      const filters = {};
+      const matching = () => [...records.values()].filter(
+        item => Object.entries(filters).every(([k, v]) => item[k] === v));
       return {
         select() { return this; },
-        eq() { return this; },
-        order() { return Promise.resolve({ data: [], error: null }); },
-        maybeSingle() { return Promise.resolve({ data: null, error: null }); }
+        eq(key, value) { filters[key] = value; return this; },
+        order() { return Promise.resolve({ data: matching(), error: null }); },
+        maybeSingle() { return Promise.resolve({ data: matching()[0] ?? null, error: null }); },
+        insert(value) { assert.ok(writeFixture); row = value; return this; },
+        async single() {
+          if (mode === 'known' || mode === 'cleanup-fails') return { data: null, error: { code: '23514' } };
+          if (mode === 'unknown') return { data: null, error: { code: '' } };
+          if ([...records.values()].some(x => x.incident_id === row.incident_id && x.kind === row.kind)) {
+            return { data: null, error: { code: '23505' } };
+          }
+          records.set(row.id, { ...row, created_at: '2026-01-01T00:00:00Z' });
+          if (mode === 'lost-ack') throw Error('Local connection dropped after fake commit');
+          return { data: records.get(row.id), error: null };
+        }
       };
     },
     storage: {
-      from() { stats.uploads++; throw Error('G2 storage forbidden in G0/G1 test environment'); }
+      from(bucket) {
+        assert.ok(writeFixture, 'No storage in original G0/G1 cases');
+        assert.equal(bucket, 'incident-evidence');
+        return {
+          async upload(path) {
+            stats.uploads++;
+            objects.add(path);
+            if (mode === 'state-change') status = 'CLOSED';
+            if (mode === 'lost-put') throw Error('Local upload acknowledgement lost');
+            if (mode === 'concurrent') {
+              if (stats.uploads === 1) await new Promise(resolve => { uploadBarrier = resolve; });
+              else uploadBarrier();
+            }
+            return { error: null };
+          },
+          async remove(paths) {
+            if (mode === 'cleanup-fails') return { error: new Error('Local Storage outage') };
+            for (const path of paths) objects.delete(path);
+            return { error: null };
+          }
+        };
+      }
     }
   };
 }
@@ -216,9 +246,9 @@ function loadActualCandidate() {
     },
     createRemoteJWKSet(url) {
       assert.equal(String(url), 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com');
-      return { marker: 'isolated-local-jwks' };
+      return localJwks;
     },
-    async jwtVerify(token, jwks, opts) { return verifyLocalJwt(token, jwks, opts); },
+    jwtVerify,
     createClient: fakeAdminClient,
     assertFirebaseAccountActive,
     FirebaseAuthStatusError,
@@ -247,7 +277,7 @@ after(async () => {
   const folder = process.env.G0G1_REPORT_DIR || join(tmpdir(), 'baocaosuco-g0g1-report');
   await mkdir(folder, { recursive: true });
   const summary = { suite: 'C01 G0/G1 isolated integration', source: process.env.G0G1_SOURCE_SHA || 'local-unpinned',
-    environment: 'localhost only / independent mock Firebase Auth + Firestore / in-memory fake Supabase',
+    environment: 'localhost only / pinned JOSE / mock Firebase / in-memory fake Supabase',
     productionCalls: 0, cloudWrites: 0, passed: ok, failed, cases };
   await writeFile(join(folder, 'result.json'), JSON.stringify(summary, null, 2) + '\n');
   const lines = [
@@ -270,7 +300,7 @@ function caseTest(name, fn) {
     try {
       await fn();
       assert.equal(sandboxEscapes, 0, 'Never allow outbound external network');
-      assert.equal(stats.uploads, 0, 'No storage uploads in G0/G1');
+      if (!writeFixture) assert.equal(stats.uploads, 0, 'No storage uploads in G0/G1');
       cases.push({ name, status: 'PASS' });
     } catch (error) {
       cases.push({ name, status: 'FAIL', reason: String(error.message).slice(0, 180) });
@@ -281,8 +311,10 @@ function caseTest(name, fn) {
 async function request(uid, incidentId = 'incidentA', opts = {}) {
   const rawToken = opts.token ?? (uid ? jwt(uid, opts.jwtOpts || {}) : null);
   const headers = rawToken === null ? {} : { Authorization: `Bearer ${rawToken}` };
+  if (opts.body) headers['Content-Type'] = 'image/jpeg';
   const response = await nativeFetch(`http://127.0.0.1:${gatewayPort}/?incidentId=${incidentId}`,
-    { method: opts.method || 'GET', headers });
+    { method: opts.method || 'GET', headers, body: opts.body,
+      ...(opts.body instanceof ReadableStream ? { duplex: 'half' } : {}) });
   const data = await response.json();
   return { code: response.status, error: data.error, data };
 }
@@ -310,6 +342,35 @@ caseTest('G1 gate khóa: JWT hết hạn bị chặn', async () => {
 caseTest('G1 gate khóa: JWT sai Firebase project bị chặn', async () => {
   expectResult(await request('residentA', 'incidentA', { jwtOpts: { payload: { aud: 'not-our-project' } } }), 401, 'INVALID_FIREBASE_TOKEN');
 });
+function assertNoProtectedCalls() {
+  for (const key of ['lookups', 'firestore', 'admin', 'uploads']) assert.equal(stats[key], 0, key);
+}
+for (const [name, payload] of [
+  ['missing exp', { exp: undefined }],
+  ['malformed exp', { exp: 'not-a-date' }],
+  ['fractional exp', { exp: now + 1800.5 }],
+  ['missing auth_time', { auth_time: undefined }],
+  ['fractional iat', { iat: now - 0.5 }],
+  ['wrong issuer', { iss: 'https://invalid.example.test' }],
+  ['wrong audience', { aud: 'isolated-wrong-project' }],
+  ['expired', { exp: now - 120 }],
+]) {
+  caseTest('Real JOSE / ' + name + ' is denied before protected operations', async () => {
+    gateEnabled = true;
+    expectResult(await request('residentA', 'incidentA', { jwtOpts: { payload } }),
+      401, 'INVALID_FIREBASE_TOKEN');
+    assertNoProtectedCalls();
+  });
+}
+caseTest('Real JOSE / invalid signature is denied before protected operations', async () => {
+  gateEnabled = true;
+  const parts = jwt('residentA').split('.');
+  parts[2] = (parts[2][0] === 'A' ? 'B' : 'A') + parts[2].slice(1);
+  expectResult(await request(null, 'incidentA', { token: parts.join('.') }),
+    401, 'INVALID_FIREBASE_TOKEN');
+  assertNoProtectedCalls();
+});
+
 caseTest('G0 gate giả lập mở: Resident A và Manager đọc incident A', async () => {
   gateEnabled = true;
   expectResult(await request('residentA'), 200);
@@ -367,3 +428,72 @@ caseTest('G1 yêu cầu POST khi gate khóa: không ghi dữ liệu hoặc ảnh
   expectResult(await request('residentA', 'incidentA', { method: 'POST' }), 503, 'EVIDENCE_GATE_NOT_APPROVED');
   assert.equal(stats.lookups, 0); assert.equal(stats.uploads, 0);
 });
+const syntheticJpeg = Buffer.from('/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCAAIAAgDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD8qqKKKAP/2Q==', 'base64');
+
+function startWriteFixture(testMode = '') {
+  gateEnabled = true;
+  writeFixture = true;
+  mode = testMode;
+}
+function upload(body = syntheticJpeg, uid = 'residentA', kind = 'REPORTED') {
+  return request(uid, 'incidentA&kind=' + kind, { method: 'POST', body });
+}
+caseTest('Synthetic JPEG inserts once; duplicate does not write Storage', async () => {
+  startWriteFixture();
+  const result = await upload();
+  expectResult(result, 201);
+  assert.equal(result.data.item.incidentId, 'incidentA');
+  expectResult(await upload(), 409, 'EVIDENCE_ALREADY_EXISTS');
+  assert.equal(stats.uploads, 1);
+});
+caseTest('Evidence roles and allowed incident statuses are preserved', async () => {
+  startWriteFixture();
+  expectResult(await upload(syntheticJpeg, 'demoManager'), 403, 'EVIDENCE_WRITE_DENIED');
+  expectResult(await upload(syntheticJpeg, 'residentB'), 403, 'INCIDENT_ACCESS_DENIED');
+  expectResult(await upload(syntheticJpeg, 'residentA', 'RESOLUTION'), 403, 'EVIDENCE_WRITE_DENIED');
+  status = 'IN_PROGRESS';
+  expectResult(await upload(syntheticJpeg, 'demoManager', 'RESOLUTION'), 201);
+  assert.equal(objects.size, 1);
+});
+caseTest('Marker-only and over-limit uploads never reach Storage', async () => {
+  startWriteFixture();
+  expectResult(await upload(Buffer.from([255,216,255,0,255,217])), 415, 'INVALID_JPEG');
+  expectResult(await upload(Buffer.alloc(2 * 1024 * 1024 + 1)), 413, 'PHOTO_TOO_LARGE');
+  assert.equal(stats.uploads, 0);
+});
+caseTest('Streaming size limit rejects a chunked request without Content-Length', async () => {
+  startWriteFixture();
+  const body = new ReadableStream({ start(controller) {
+    controller.enqueue(new Uint8Array(1024 * 1024));
+    controller.enqueue(new Uint8Array(1024 * 1024));
+    controller.enqueue(new Uint8Array(1));
+    controller.close();
+  } });
+  expectResult(await upload(body), 413, 'PHOTO_TOO_LARGE');
+  assert.equal(stats.uploads, 0);
+});
+caseTest('A concurrent losing insert cannot delete the winning object', async () => {
+  startWriteFixture('concurrent');
+  const results = await Promise.all([upload(), upload()]);
+  assert.deepEqual(results.map(x => x.code).sort(), [201, 409]);
+  assert.equal(stats.uploads, 2, 'Both contenders reached fake Storage before either DB insert');
+  assert.equal(records.size, 1);
+  assert.equal(objects.size, 1);
+  assert.ok(objects.has([...records.values()][0].storage_path));
+});
+for (const [fixture, http, code, recordCount, objectCount] of [
+  ['known', 503, 'EVIDENCE_METADATA_FAILED', 0, 0],
+  ['lost-ack', 201, undefined, 1, 1],
+  ['unknown', 503, 'EVIDENCE_METADATA_UNCONFIRMED', 0, 1],
+  ['cleanup-fails', 503, 'EVIDENCE_METADATA_FAILED', 0, 1],
+  ['lost-put', 503, 'PHOTO_UPLOAD_FAILED', 0, 0],
+  ['state-change', 403, 'EVIDENCE_WRITE_DENIED', 0, 0],
+]) {
+  caseTest('Synthetic upload integrity / ' + fixture, async () => {
+    startWriteFixture(fixture);
+    expectResult(await upload(), http, code);
+    assert.equal(records.size, recordCount);
+    assert.equal(objects.size, objectCount);
+    assert.equal((await request('residentA')).data.items.length, recordCount);
+  });
+}

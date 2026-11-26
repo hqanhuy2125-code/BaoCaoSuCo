@@ -25,3 +25,13 @@ Real Edge Runtime and disposable Firebase account revocation checks remain a fur
 Requires Node.js 22+ and, for CI Deno check, Deno v2. No `npm install`, no Firebase CLI, no Docker, no cloud project, and no access to secrets. Do not use the existing Resident A/B/Manager accounts to test disabling or token revocation. This workflow never deploys or merges and may run safely from an untrusted PR fork with read-only repository permissions.
 
 References: https://supabase.com/docs/guides/functions/unit-test ; https://firebase.google.com/docs/reference/rest/auth#section-get-account-info .
+## FINAL-01 exact runtime delta
+
+Run npm ci --prefix security/gateway/integration --ignore-scripts and then
+node --test security/gateway/integration/isolated.test.mjs. The harness now uses
+actual jose 5.10.0, with generated RSA keys and a local JWK set. Original #65
+HTTP/Auth/Firestore stubs and the outbound network guard remain in use.
+Synthetic JPEG cases exercise fake Storage/DB only and do not grant cloud access.
+Apply/verify the candidate patch from #64 before recording a green result on
+this branch. Deno check remains the original separate workflow job, and the
+local verification does not run Supabase Edge Runtime.

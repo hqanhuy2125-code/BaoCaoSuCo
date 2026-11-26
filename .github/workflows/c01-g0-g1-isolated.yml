@@ -29,6 +29,8 @@ jobs:
           test -z "${FIREBASE_SERVICE_ACCOUNT:-}"
           test -z "${SUPABASE_SERVICE_ROLE_KEY:-}"
           test -z "${FIREBASE_ID_TOKEN:-}"
+      - name: Install pinned local test verifier
+        run: npm ci --prefix security/gateway/integration --ignore-scripts
       - name: G0/G1 real local HTTP sandbox (no Supabase/Firebase calls)
         shell: bash
         env:
