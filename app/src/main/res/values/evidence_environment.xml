@@ -1,0 +1,6 @@
+<resources>
+    <!-- Reviewed build inputs only. Keep disabled until the Owner approves the exact pair. -->
+    <string name="evidence_environment" translatable="false">disabled</string>
+    <string name="evidence_approved_staging_ref" translatable="false"></string>
+    <string name="evidence_approved_staging_firebase" translatable="false"></string>
+</resources>

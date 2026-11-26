@@ -25,7 +25,8 @@
     <LinearLayout
         android:id="@+id/custom_bottom_bar"
         android:layout_width="match_parent"
-        android:layout_height="@dimen/nav_bar_height"
+        android:layout_height="wrap_content"
+        android:minHeight="@dimen/nav_bar_height"
         android:background="@drawable/bg_floating_nav_bar"
         android:elevation="10dp"
         android:gravity="center_vertical"
@@ -39,7 +40,8 @@
         <LinearLayout
             android:id="@+id/nav_item_home"
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
             android:layout_weight="1"
             android:background="?attr/selectableItemBackground"
             android:clickable="true"
@@ -54,16 +56,17 @@
                 android:layout_width="@dimen/icon_size_m"
                 android:layout_height="@dimen/icon_size_m"
                 android:src="@drawable/ic_nav_home"
-                app:tint="@color/pink_primary_dark"
+                app:tint="@color/f7_nav_active"
                 android:contentDescription="@string/nav_incidents" />
 
             <TextView
                 android:id="@+id/tv_nav_home"
+                android:gravity="center"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_2xs"
                 android:text="@string/nav_incidents"
-                android:textColor="@color/pink_primary_dark"
+                android:textColor="@color/f7_nav_active"
                 android:textSize="@dimen/text_nav_label"
                 android:textStyle="bold" />
 
@@ -81,7 +84,8 @@
         <LinearLayout
             android:id="@+id/nav_item_explore"
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
             android:layout_weight="1"
             android:background="?attr/selectableItemBackground"
             android:clickable="true"
@@ -96,16 +100,17 @@
                 android:layout_width="@dimen/icon_size_m"
                 android:layout_height="@dimen/icon_size_m"
                 android:src="@drawable/ic_nav_explore"
-                app:tint="#2D3436"
+                app:tint="@color/f7_nav"
                 android:contentDescription="@string/nav_dashboard" />
 
             <TextView
                 android:id="@+id/tv_nav_explore"
+                android:gravity="center"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_2xs"
                 android:text="@string/nav_dashboard"
-                android:textColor="#2D3436"
+                android:textColor="@color/f7_nav"
                 android:textSize="@dimen/text_nav_label" />
 
             <View
@@ -121,7 +126,8 @@
         <LinearLayout
             android:id="@+id/nav_item_projects"
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
             android:layout_weight="1"
             android:background="?attr/selectableItemBackground"
             android:clickable="true"
@@ -136,16 +142,17 @@
                 android:layout_width="@dimen/icon_size_m"
                 android:layout_height="@dimen/icon_size_m"
                 android:src="@drawable/ic_nav_projects"
-                app:tint="#2D3436"
+                app:tint="@color/f7_nav"
                 android:contentDescription="@string/nav_create" />
 
             <TextView
                 android:id="@+id/tv_nav_projects"
+                android:gravity="center"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_2xs"
                 android:text="@string/nav_create"
-                android:textColor="#2D3436"
+                android:textColor="@color/f7_nav"
                 android:textSize="@dimen/text_nav_label" />
 
             <View
@@ -161,7 +168,8 @@
         <LinearLayout
             android:id="@+id/nav_item_saved"
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
             android:layout_weight="1"
             android:background="?attr/selectableItemBackground"
             android:clickable="true"
@@ -176,16 +184,17 @@
                 android:layout_width="@dimen/icon_size_m"
                 android:layout_height="@dimen/icon_size_m"
                 android:src="@drawable/ic_nav_saved"
-                app:tint="#2D3436"
+                app:tint="@color/f7_nav"
                 android:contentDescription="@string/nav_overdue" />
 
             <TextView
                 android:id="@+id/tv_nav_saved"
+                android:gravity="center"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_2xs"
                 android:text="@string/nav_overdue"
-                android:textColor="#2D3436"
+                android:textColor="@color/f7_nav"
                 android:textSize="@dimen/text_nav_label" />
 
             <View
@@ -201,7 +210,8 @@
         <LinearLayout
             android:id="@+id/nav_item_profile"
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
             android:layout_weight="1"
             android:background="?attr/selectableItemBackground"
             android:clickable="true"
@@ -216,16 +226,17 @@
                 android:layout_width="@dimen/icon_size_m"
                 android:layout_height="@dimen/icon_size_m"
                 android:src="@drawable/ic_nav_profile"
-                app:tint="#2D3436"
+                app:tint="@color/f7_nav"
                 android:contentDescription="@string/nav_profile" />
 
             <TextView
                 android:id="@+id/tv_nav_profile"
+                android:gravity="center"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_2xs"
                 android:text="@string/nav_profile"
-                android:textColor="#2D3436"
+                android:textColor="@color/f7_nav"
                 android:textSize="@dimen/text_nav_label" />
 
             <View

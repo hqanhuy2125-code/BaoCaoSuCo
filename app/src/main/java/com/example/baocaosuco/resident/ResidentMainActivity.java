@@ -8,6 +8,13 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
+import androidx.appcompat.app.AppCompatDelegate;
+import com.example.baocaosuco.integration.ui.IncidentUiText;
+import android.widget.Toast;
+import androidx.activity.OnBackPressedCallback;
+import com.example.baocaosuco.resident.photo.IncidentPhotoController;
+import com.example.baocaosuco.resident.photo.IncidentPhotoProcessor;
+import com.example.baocaosuco.resident.photo.IncidentPhotoUiBridge;
 
 import com.example.baocaosuco.MainActivity;
 import com.example.baocaosuco.R;
@@ -18,6 +25,10 @@ import com.example.baocaosuco.data.model.User;
 
 public class ResidentMainActivity extends AppCompatActivity {
 
+    private IncidentPhotoUiBridge photoBridge;
+    private IncidentPhotoUiBridge.Listener photoListener;
+    private boolean residentVerified;
+    private OnBackPressedCallback formBack;
     private TextView tvGreeting;
     private TextView tvName;
     private TextView tvEmail;
@@ -25,8 +36,65 @@ public class ResidentMainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.ui_resident_main);
+        photoBridge = new IncidentPhotoUiBridge(this, new IncidentPhotoUiBridge.Listener() {
+            @Override public void onBusy(boolean busy) {
+                if (photoListener != null) photoListener.onBusy(busy);
+            }
 
+            @Override public void onPhotoReady(IncidentPhotoProcessor.PreparedPhoto photo) {
+                if (photoListener != null) photoListener.onPhotoReady(photo);
+                else photoBridge.clearSelected();
+            }
+
+            @Override public void onPhotoCleared() {
+                if (photoListener != null) photoListener.onPhotoCleared();
+            }
+
+            @Override public void onCancelled(IncidentPhotoController.Source source) {
+                if (photoListener != null) photoListener.onCancelled(source);
+            }
+
+            @Override public void onPickerError(IncidentPhotoController.Source source,
+                                               IncidentPhotoController.Error error) {
+                if (photoListener != null) photoListener.onPickerError(source, error);
+            }
+
+            @Override public void onProcessingError(IncidentPhotoProcessor.Failure error) {
+                if (photoListener != null) photoListener.onProcessingError(error);
+            }
+        });
+        setContentView(R.layout.ui_resident_main);
+        formBack = new OnBackPressedCallback(false) {
+            @Override public void handleOnBackPressed() { switchToHome(); }
+        };
+        getOnBackPressedDispatcher().addCallback(this, formBack);
+        syncFormChrome(getSupportFragmentManager().findFragmentById(R.id.fragment_container)
+                instanceof CreateIncidentFragment);
+
+        IncidentUiText.applyInsets(this, findViewById(R.id.main));
+        if (getResources().getConfiguration().screenHeightDp < 600
+                || getResources().getConfiguration().fontScale >= 1.3f) {
+            View avatar = findViewById(R.id.iv_header_avatar);
+            ((View) avatar.getParent()).setVisibility(View.GONE);
+            // The welcome line already identifies the dashboard on compact screens.
+            findViewById(R.id.title_text).setVisibility(View.GONE);
+            View header = findViewById(R.id.container_merged_header);
+            int vertical = Math.round(12 * getResources().getDisplayMetrics().density);
+            header.setPaddingRelative(header.getPaddingStart(), vertical, header.getPaddingEnd(), vertical);
+        }
+        View theme = findViewById(R.id.theme_toggle_button);
+        theme.setOnClickListener(v -> {
+            int mask = getResources().getConfiguration().uiMode
+                    & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
+            AppCompatDelegate.setDefaultNightMode(mask == android.content.res.Configuration.UI_MODE_NIGHT_YES
+                    ? AppCompatDelegate.MODE_NIGHT_NO : AppCompatDelegate.MODE_NIGHT_YES);
+        });
+        int[] unsupported = {R.id.nav_item_explore, R.id.nav_item_projects, R.id.nav_item_profile, R.id.nav_item_saved};
+        for (int id : unsupported) {
+            View tab = findViewById(id);
+            if (tab != null) tab.setOnClickListener(v -> Toast.makeText(this,
+                    "Chức năng chưa hỗ trợ", Toast.LENGTH_SHORT).show());
+        }
         tvGreeting = findViewById(R.id.welcome_text);
         tvName = findViewById(R.id.tv_header_resident_name);
         tvEmail = findViewById(R.id.tv_header_resident_email);
@@ -41,6 +109,11 @@ public class ResidentMainActivity extends AppCompatActivity {
                 if (user == null || !User.ROLE_RESIDENT.equals(user.getRole())) {
                     redirectToMain();
                     return;
+                }
+                residentVerified = true;
+                Fragment content = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+                if (content instanceof CreateIncidentFragment) {
+                    ((CreateIncidentFragment) content).refreshPhotoAccess();
                 }
                 if (user.getDisplayName() != null && !user.getDisplayName().trim().isEmpty()) {
                     setGreetingText(user.getDisplayName());
@@ -85,11 +158,37 @@ public class ResidentMainActivity extends AppCompatActivity {
     }
 
     public void switchToHome() {
+        Fragment content = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (content instanceof CreateIncidentFragment
+                && (((CreateIncidentFragment) content).isSubmitting() || photoBridge.isBusy())) return;
+        if (content instanceof ResidentListFragment) return;
+        photoBridge.clearSelected();
+        syncFormChrome(false);
         loadFragment(new ResidentListFragment());
     }
 
     public void switchToCreateIncident() {
+        if (!residentVerified || formBack.isEnabled()) return;
+        syncFormChrome(true);
         loadFragment(new CreateIncidentFragment());
+    }
+
+    private void syncFormChrome(boolean form) {
+        formBack.setEnabled(form);
+        findViewById(R.id.container_merged_header).setVisibility(form ? View.GONE : View.VISIBLE);
+    }
+
+    IncidentPhotoUiBridge photoBridge() { return photoBridge; }
+
+    boolean isResidentVerified() { return residentVerified; }
+
+    void setPhotoListener(IncidentPhotoUiBridge.Listener listener) { photoListener = listener; }
+
+    @Override
+    protected void onDestroy() {
+        photoListener = null;
+        photoBridge.close();
+        super.onDestroy();
     }
 
     private void loadFragment(Fragment fragment) {

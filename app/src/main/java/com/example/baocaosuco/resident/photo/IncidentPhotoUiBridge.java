@@ -78,6 +78,7 @@ public final class IncidentPhotoUiBridge {
                         listener.onPickerError(source, error);
                     }
                 });
+        busy = controller.isBusy();
     }
 
     private void restoreSelection(Bundle saved) {

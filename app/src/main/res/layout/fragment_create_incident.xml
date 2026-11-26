@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:fillViewport="true"
     android:clipToPadding="false"
-    android:paddingBottom="100dp"
+    android:paddingBottom="12dp"
     android:background="?android:attr/colorBackground">
 
     <!-- Incident Report Form Layout -->
@@ -95,7 +95,7 @@
                             android:paddingTop="4dp"
                             android:paddingEnd="10dp"
                             android:paddingBottom="4dp"
-                            android:text="📷 Ảnh Đính Kèm Sự Cố"
+                            android:text="Ảnh xem trước"
                             android:textColor="@color/white"
                             android:textSize="12sp"
                             android:textStyle="bold" />
@@ -103,40 +103,58 @@
                 </com.google.android.material.card.MaterialCardView>
 
                 <!-- Title Input -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:labelFor="@id/et_incident_title"
+                    android:text="Tiêu đề sự cố"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/til_incident_title"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    app:hintTextColor="@color/pink_primary"
-                    app:boxStrokeColor="@color/pink_primary">
+                    android:layout_marginTop="4dp"
+                    app:hintEnabled="false"
+                    app:boxStrokeColor="@color/f7_input_stroke">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_incident_title"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/incident_title_hint"
                         android:inputType="textCapSentences"
+                        android:textColor="?attr/colorOnSurface"
+                        android:minHeight="48dp"
                         android:textSize="14sp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <!-- Location Input -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:labelFor="@id/et_incident_location"
+                    android:text="Vị trí sự cố"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/til_incident_location"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    app:hintTextColor="@color/pink_primary"
-                    app:boxStrokeColor="@color/pink_primary">
+                    android:layout_marginTop="4dp"
+                    app:hintEnabled="false"
+                    app:boxStrokeColor="@color/f7_input_stroke">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_incident_location"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/incident_location_hint"
                         android:inputType="textCapWords"
+                        android:textColor="?attr/colorOnSurface"
+                        android:minHeight="48dp"
                         android:textSize="14sp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -161,11 +179,13 @@
                         android:id="@+id/rb_priority_urgent"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:background="@drawable/bg_badge_urgent"
+                        android:backgroundTint="@color/f7_new_bg"
+                            android:background="@drawable/bg_badge_pending"
                         android:padding="10dp"
                         android:layout_marginBottom="6dp"
                         android:text="@string/priority_urgent"
-                        android:textColor="#C62828"
+                        android:textColor="@color/f7_new_fg"
+                            android:buttonTint="@color/f7_new_fg"
                         android:textSize="13sp"
                         android:textStyle="bold" />
 
@@ -174,11 +194,13 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:checked="true"
-                        android:background="@drawable/bg_badge_processing"
+                        android:backgroundTint="@color/f7_progress_bg"
+                            android:background="@drawable/bg_badge_pending"
                         android:padding="10dp"
                         android:layout_marginBottom="6dp"
                         android:text="@string/priority_normal"
-                        android:textColor="#B78103"
+                        android:textColor="@color/f7_progress_fg"
+                            android:buttonTint="@color/f7_progress_fg"
                         android:textSize="13sp"
                         android:textStyle="bold" />
 
@@ -186,33 +208,44 @@
                         android:id="@+id/rb_priority_low"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:background="@drawable/bg_badge_pending"
+                        android:backgroundTint="@color/f7_assigned_bg"
+                            android:background="@drawable/bg_badge_pending"
                         android:padding="10dp"
                         android:text="@string/priority_low"
-                        android:textColor="#C62828"
+                        android:textColor="@color/f7_assigned_fg"
+                            android:buttonTint="@color/f7_assigned_fg"
                         android:textSize="13sp"
                         android:textStyle="bold" />
                 </RadioGroup>
 
                 <!-- Description Input -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:labelFor="@id/et_incident_desc"
+                    android:text="Mô tả sự cố"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/til_incident_desc"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    app:hintTextColor="@color/pink_primary"
-                    app:boxStrokeColor="@color/pink_primary">
+                    android:layout_marginTop="4dp"
+                    app:hintEnabled="false"
+                    app:boxStrokeColor="@color/f7_input_stroke">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_incident_desc"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:gravity="top|start"
-                        android:hint="@string/incident_desc_hint"
                         android:inputType="textMultiLine"
                         android:lines="4"
                         android:minLines="3"
+                        android:textColor="?attr/colorOnSurface"
+                        android:minHeight="48dp"
                         android:textSize="14sp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -225,13 +258,18 @@
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_submit_incident"
                         android:layout_width="match_parent"
-                        android:layout_height="52dp"
-                        android:background="@drawable/bg_gd_button_primary"
+                        android:layout_height="wrap_content"
+                        android:minHeight="52dp"
+                        android:paddingTop="10dp"
+                        android:paddingBottom="10dp"
+                        android:gravity="center"
+                        android:singleLine="false"
+                        android:maxLines="4"
                         android:text="@string/btn_submit_incident"
-                        android:textColor="@color/white"
+                        android:textColor="@color/f7_photo_button_fg"
                         android:textSize="15sp"
                         android:textStyle="bold"
-                        app:backgroundTint="@null"
+                        app:backgroundTint="@color/f7_submit_bg"
                         app:cornerRadius="12dp" />
 
                     <ProgressBar

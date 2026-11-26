@@ -2,35 +2,39 @@ package com.example.baocaosuco.manager;
 
 import android.os.Bundle;
 import android.view.View;
-import android.widget.ArrayAdapter;
+import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.util.TypedValue;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.widget.ImageButton;
-import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AlertDialog;
 
 import com.example.baocaosuco.R;
+import com.example.baocaosuco.resident.photo.EvidencePanel;
 import com.example.baocaosuco.data.incident.IncidentSnapshot;
 import com.example.baocaosuco.data.repository.FirebaseIncidentRepository;
 import com.example.baocaosuco.data.repository.IncidentRepository;
 import com.example.baocaosuco.logic.IncidentStatus;
 import com.google.android.material.button.MaterialButton;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import com.example.baocaosuco.integration.ui.IncidentUiText;
 import java.util.List;
-import java.util.Locale;
 
 public class ManagerDetailActivity extends AppCompatActivity implements ManagerIncidentCoordinator.View {
 
     private ImageButton btnBack;
     private TextView tvPriority, tvStatus, tvTitle, tvLocation, tvResident, tvCreatedAt, tvDesc;
-    private Spinner spinnerTechnician;
-    private MaterialButton btnStartProcessing, btnComplete;
+    private MaterialButton btnAssign, btnStartProcessing, btnComplete, retry;
+    private TextView message;
+    private boolean busy;
+    private boolean needsReload;
 
     private ManagerIncidentCoordinator coordinator;
     private String incidentId;
+    private EvidencePanel evidence;
     private IncidentSnapshot currentIncident;
 
     @Override
@@ -38,6 +42,8 @@ public class ManagerDetailActivity extends AppCompatActivity implements ManagerI
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_manager_detail);
 
+        IncidentUiText.applyInsets(this, findViewById(R.id.main));
+        evidence = new EvidencePanel(findViewById(R.id.incident_evidence_panel));
         incidentId = getIntent().getStringExtra("incident_id");
 
         btnBack = findViewById(R.id.btn_manager_back);
@@ -48,47 +54,71 @@ public class ManagerDetailActivity extends AppCompatActivity implements ManagerI
         tvResident = findViewById(R.id.tv_mgr_detail_resident);
         tvCreatedAt = findViewById(R.id.tv_mgr_detail_created_at);
         tvDesc = findViewById(R.id.tv_mgr_detail_desc);
-        spinnerTechnician = findViewById(R.id.spinner_technician);
+        btnAssign = findViewById(R.id.btn_mgr_assign);
+        retry = findViewById(R.id.incident_retry);
+        message = findViewById(R.id.incident_message);
+        findViewById(R.id.card_incident_summary).setVisibility(View.GONE);
+        findViewById(R.id.card_manager_actions).setVisibility(View.GONE);
         btnStartProcessing = findViewById(R.id.btn_mgr_start_processing);
         btnComplete = findViewById(R.id.btn_mgr_complete);
 
         btnBack.setOnClickListener(v -> finish());
 
-        // Setup technician spinner mock items
-        String[] techs = {"Kỹ thuật viên Nam", "Kỹ thuật viên Hùng", "Kỹ thuật viên Tuấn"};
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, techs);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerTechnician.setAdapter(adapter);
-
         coordinator = new ManagerIncidentCoordinator(new FirebaseIncidentRepository().manager(), this);
-
+        btnAssign.setOnClickListener(v -> {
+            if (canAct()) showAssignment(currentIncident);
+        });
         btnStartProcessing.setOnClickListener(v -> {
-            if (currentIncident != null) {
-                if (currentIncident.getStatus() == IncidentStatus.NEW) {
-                    String tech = spinnerTechnician.getSelectedItem() != null ? spinnerTechnician.getSelectedItem().toString() : "Kỹ thuật viên mặc định";
-                    coordinator.assign(currentIncident, tech);
-                } else if (currentIncident.getStatus() == IncidentStatus.ASSIGNED) {
-                    coordinator.start(currentIncident);
-                }
-            }
+            if (canAct()) coordinator.start(currentIncident);
         });
-
         btnComplete.setOnClickListener(v -> {
-            if (currentIncident != null) {
-                coordinator.complete(currentIncident);
-            }
+            if (canAct()) coordinator.complete(currentIncident);
         });
+        retry.setOnClickListener(v -> coordinator.loadList());
+        if (incidentId == null) onError(IncidentRepository.Error.NOT_FOUND);
+        else coordinator.loadList(); // Resolve the ID against a newly loaded Manager page.
+    }
 
-        if (incidentId != null) {
-            coordinator.loadList(); // Manager coordinator requires loading list before selecting
-        } else {
-            Toast.makeText(this, "Không tìm thấy mã sự cố", Toast.LENGTH_SHORT).show();
-            finish();
-        }
+    private boolean canAct() {
+        return !busy && !needsReload && currentIncident != null;
+    }
+
+    private void showAssignment(IncidentSnapshot observed) {
+        EditText input = new EditText(this);
+        input.setHint("Tên người xử lý");
+        input.setSingleLine();
+        TypedValue surfaceText = new TypedValue();
+        getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnSurface, surfaceText, true);
+        input.setTextColor(surfaceText.data);
+        getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnSurfaceVariant, surfaceText, true);
+        input.setHintTextColor(surfaceText.data);
+        FrameLayout field = new FrameLayout(this);
+        int inset = Math.round(24 * getResources().getDisplayMetrics().density);
+        field.setPaddingRelative(inset, 0, inset, 0);
+        field.addView(input, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this).setTitle("Phân công")
+                .setView(field).setNegativeButton("Hủy", null)
+                .setPositiveButton("Giao việc", null).create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(v -> {
+                    String name = input.getText().toString().trim();
+                    if (name.isEmpty() || name.codePointCount(0, name.length()) > 120) {
+                        input.setError("Nhập tên từ 1 đến 120 ký tự");
+                        return;
+                    }
+                    if (canAct()) coordinator.assign(observed, name);
+                    dialog.dismiss();
+                }));
+        dialog.show();
+        int actionColor = androidx.core.content.ContextCompat.getColor(this, R.color.f7_link);
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(actionColor);
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(actionColor);
     }
 
     @Override
     protected void onDestroy() {
+        evidence.close();
         super.onDestroy();
         if (coordinator != null) {
             coordinator.close();
@@ -97,7 +127,11 @@ public class ManagerDetailActivity extends AppCompatActivity implements ManagerI
 
     @Override
     public void onBusy(boolean busy) {
-        // Loading state
+        this.busy = busy;
+        retry.setEnabled(!busy);
+        setActionsEnabled(canAct());
+        if (busy) showMessage("Đang tải hoặc lưu…");
+        else showMessage(null);
     }
 
     @Override
@@ -110,41 +144,69 @@ public class ManagerDetailActivity extends AppCompatActivity implements ManagerI
     @Override
     public void onDetail(IncidentSnapshot selected) {
         currentIncident = selected;
+        evidence.showIncident(selected.getId());
+        needsReload = false;
+        retry.setVisibility(View.GONE);
+        showMessage(null);
+        findViewById(R.id.card_incident_summary).setVisibility(View.VISIBLE);
         tvTitle.setText(selected.getTitle());
         tvLocation.setText("Vị trí: " + selected.getLocation());
-        tvPriority.setText(selected.getPriority());
-        tvStatus.setText(selected.getStatusCode());
+        tvPriority.setText(IncidentUiText.priority(selected.getPriority()));
+        tvStatus.setText(IncidentUiText.status(selected.getStatus()));
+        IncidentUiText.applyStatusBadge(tvStatus, selected.getStatus());
+        IncidentUiText.applyPriorityBadge(tvPriority, selected.getPriority());
         tvDesc.setText(selected.getDescription());
-        tvResident.setText("Người báo: " + selected.getResidentId());
+        tvResident.setText("Mã sự cố: " + selected.getId());
+        tvCreatedAt.setText("Thời gian gửi: " + IncidentUiText.time(selected.getCreatedAtMillis()));
+        TextView deadline = findViewById(R.id.tv_mgr_detail_deadline);
+        deadline.setText("Hạn xử lý: " + IncidentUiText.time(selected.getDueAtMillis()));
+        TextView handler = findViewById(R.id.tv_mgr_detail_handler);
+        handler.setText("Người xử lý: " + (selected.getAssignedTo() == null
+                ? "Chưa phân công" : selected.getAssignedTo()));
+        findViewById(R.id.tv_mgr_detail_assignment_info).setVisibility(View.GONE);
+        findViewById(R.id.tv_mgr_detail_overdue_warning).setVisibility(
+                ManagerIncidentCoordinator.isOverdue(selected, System.currentTimeMillis())
+                        ? View.VISIBLE : View.GONE);
 
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm - dd/MM/yyyy", Locale.getDefault());
-        tvCreatedAt.setText("Thời gian gửi: " + sdf.format(new Date(selected.getCreatedAtMillis())));
+        IncidentStatus status = selected.getStatus();
+        btnAssign.setVisibility(status == IncidentStatus.NEW ? View.VISIBLE : View.GONE);
+        btnStartProcessing.setVisibility(status == IncidentStatus.ASSIGNED ? View.VISIBLE : View.GONE);
+        btnComplete.setVisibility(status == IncidentStatus.IN_PROGRESS ? View.VISIBLE : View.GONE);
+        findViewById(R.id.card_manager_actions).setVisibility(
+                status == IncidentStatus.COMPLETED || status == IncidentStatus.CLOSED ? View.GONE : View.VISIBLE);
+        setActionsEnabled(canAct());
+    }
 
-        if (selected.getStatus() == IncidentStatus.NEW) {
-            btnStartProcessing.setText("Phân Công & Bắt Đầu");
-            btnStartProcessing.setVisibility(View.VISIBLE);
-            btnComplete.setVisibility(View.GONE);
-        } else if (selected.getStatus() == IncidentStatus.ASSIGNED) {
-            btnStartProcessing.setText("Bắt Đầu Xử Lý");
-            btnStartProcessing.setVisibility(View.VISIBLE);
-            btnComplete.setVisibility(View.GONE);
-        } else if (selected.getStatus() == IncidentStatus.IN_PROGRESS) {
-            btnStartProcessing.setVisibility(View.GONE);
-            btnComplete.setVisibility(View.VISIBLE);
-        } else {
-            btnStartProcessing.setVisibility(View.GONE);
-            btnComplete.setVisibility(View.GONE);
-        }
+    private void setActionsEnabled(boolean enabled) {
+        btnAssign.setEnabled(enabled);
+        btnStartProcessing.setEnabled(enabled);
+        btnComplete.setEnabled(enabled);
+    }
+
+    private void showMessage(String text) {
+        message.setText(text);
+        message.setVisibility(text == null ? View.GONE : View.VISIBLE);
     }
 
     @Override
     public void onSaved(IncidentSnapshot incident) {
-        Toast.makeText(this, "Cập nhật thành công", Toast.LENGTH_SHORT).show();
         onDetail(incident);
+        setResult(RESULT_OK);
     }
 
     @Override
     public void onError(IncidentRepository.Error error) {
-        Toast.makeText(this, "Lỗi: " + error, Toast.LENGTH_SHORT).show();
+        needsReload = true;
+        setActionsEnabled(false);
+        if (error == IncidentRepository.Error.PERMISSION_DENIED
+                || error == IncidentRepository.Error.AUTH_REQUIRED
+                || error == IncidentRepository.Error.NOT_FOUND) {
+            currentIncident = null;
+            evidence.hide();
+            findViewById(R.id.card_incident_summary).setVisibility(View.GONE);
+            findViewById(R.id.card_manager_actions).setVisibility(View.GONE);
+        }
+        retry.setVisibility(incidentId == null ? View.GONE : View.VISIBLE);
+        showMessage(IncidentUiText.error(error));
     }
 }

@@ -8,6 +8,9 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
+import androidx.appcompat.app.AppCompatDelegate;
+import com.example.baocaosuco.integration.ui.IncidentUiText;
+import android.widget.Toast;
 
 import com.example.baocaosuco.MainActivity;
 import com.example.baocaosuco.R;
@@ -27,6 +30,30 @@ public class ManagerMainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.ui_manager_main);
 
+        IncidentUiText.applyInsets(this, findViewById(R.id.main));
+        if (getResources().getConfiguration().screenHeightDp < 600
+                || getResources().getConfiguration().fontScale >= 1.3f) {
+            View avatar = findViewById(R.id.iv_header_avatar);
+            ((View) avatar.getParent()).setVisibility(View.GONE);
+            // The welcome line already identifies the dashboard on compact screens.
+            findViewById(R.id.title_text).setVisibility(View.GONE);
+            View header = findViewById(R.id.container_merged_header);
+            int vertical = Math.round(12 * getResources().getDisplayMetrics().density);
+            header.setPaddingRelative(header.getPaddingStart(), vertical, header.getPaddingEnd(), vertical);
+        }
+        View theme = findViewById(R.id.theme_toggle_button);
+        theme.setOnClickListener(v -> {
+            int mask = getResources().getConfiguration().uiMode
+                    & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
+            AppCompatDelegate.setDefaultNightMode(mask == android.content.res.Configuration.UI_MODE_NIGHT_YES
+                    ? AppCompatDelegate.MODE_NIGHT_NO : AppCompatDelegate.MODE_NIGHT_YES);
+        });
+        int[] unsupported = {R.id.nav_item_explore, R.id.nav_item_projects, R.id.nav_item_profile};
+        for (int id : unsupported) {
+            View tab = findViewById(id);
+            if (tab != null) tab.setOnClickListener(v -> Toast.makeText(this,
+                    "Chức năng chưa hỗ trợ", Toast.LENGTH_SHORT).show());
+        }
         tvGreeting = findViewById(R.id.welcome_text);
         tvName = findViewById(R.id.tv_header_resident_name);
         tvEmail = findViewById(R.id.tv_header_resident_email);
@@ -68,6 +95,10 @@ public class ManagerMainActivity extends AppCompatActivity {
             navHome.setOnClickListener(v -> switchToHome());
         }
 
+        findViewById(R.id.nav_item_saved).setOnClickListener(v -> {
+            Fragment content = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+            if (content instanceof ManagerListFragment) ((ManagerListFragment) content).showOverdue();
+        });
         if (savedInstanceState == null) {
             switchToHome();
         }
@@ -80,7 +111,9 @@ public class ManagerMainActivity extends AppCompatActivity {
     }
 
     public void switchToHome() {
-        loadFragment(new ManagerListFragment());
+        Fragment content = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (content instanceof ManagerListFragment) ((ManagerListFragment) content).showAll();
+        else loadFragment(new ManagerListFragment());
     }
 
     private void loadFragment(Fragment fragment) {
