@@ -22,6 +22,21 @@ public class EvidenceEndpointTest {
         assertEquals("/functions/v1/evidence-gateway", fixture.gateway.getPath());
     }
 
+    @Test public void sharedPhotoQaRequiresItsExactPairAndDebugOptIn() {
+        String ref = "toqmwniuwqinielydgnp";
+        String firebase = "baocaosuco-c4ccc";
+        EvidenceEndpoint qa = EvidenceEndpoint.resolve("qa-shared-photo", ref, firebase, true);
+        assertNotNull(qa);
+        assertEquals("https://toqmwniuwqinielydgnp.supabase.co/functions/v1/evidence-gateway", qa.gateway.toString());
+        assertEquals(firebase, qa.firebaseProject);
+        assertNull(EvidenceEndpoint.resolve("qa-shared-photo", ref, firebase, false));
+        assertNull(EvidenceEndpoint.resolve("qa-shared-photo", "abcdefghijklmnopqrst", firebase, true));
+        assertNull(EvidenceEndpoint.resolve("qa-shared-photo", ref, "fixture-only", true));
+        assertNull(EvidenceEndpoint.resolve("qa-shared-photo", "", "", true));
+        assertNull(EvidenceEndpoint.resolve("staging", ref, firebase, true));
+        assertNull(EvidenceEndpoint.resolve("disabled", ref, firebase, true));
+    }
+
     @Test public void productionRejectsOverridesByKeepingTheFixedPair() {
         EvidenceEndpoint production = EvidenceEndpoint.resolve("production", "other", "other", false);
         assertEquals("xnmlnqaetcaawvsbmhjy.supabase.co", production.gateway.getHost());

@@ -9,6 +9,7 @@ final class EvidenceEndpoint {
     private static final Pattern FIREBASE_ID = Pattern.compile("[a-z][a-z0-9-]{4,28}[a-z0-9]");
     private static final String PRODUCTION_REF = "xnmlnqaetcaawvsbmhjy";
     private static final String PRODUCTION_FIREBASE = "baocaosuco-c4ccc";
+    private static final String SHARED_PHOTO_QA_REF = "toqmwniuwqinielydgnp";
 
     final URI gateway;
     final String firebaseProject;
@@ -20,6 +21,11 @@ final class EvidenceEndpoint {
 
     static EvidenceEndpoint resolve(String environment, String stagingRef, String stagingFirebase, boolean debug) {
         if ("production".equals(environment)) return new EvidenceEndpoint(PRODUCTION_REF, PRODUCTION_FIREBASE);
+        if ("qa-shared-photo".equals(environment)) {
+            return debug && SHARED_PHOTO_QA_REF.equals(stagingRef) && PRODUCTION_FIREBASE.equals(stagingFirebase)
+                    ? new EvidenceEndpoint(SHARED_PHOTO_QA_REF, PRODUCTION_FIREBASE)
+                    : null;
+        }
         if (!"staging".equals(environment) || !debug
                 || stagingRef == null || !PROJECT_REF.matcher(stagingRef).matches()
                 || stagingFirebase == null || !FIREBASE_ID.matcher(stagingFirebase).matches()
