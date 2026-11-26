@@ -6,8 +6,10 @@ import { createRemoteJWKSet, jwtVerify } from "npm:jose@5.10.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.0";
 import { assertFirebaseAccountActive, FirebaseAuthStatusError } from "./revocation-check.mjs";
 
-// Staging may pin its own approved Firebase project via server configuration.
-const FIREBASE_PROJECT_ID = Deno.env.get("EVIDENCE_FIREBASE_PROJECT_ID") ?? "baocaosuco-c4ccc";
+const PRODUCTION_FIREBASE = "baocaosuco-c4ccc";
+const PRODUCTION_SUPABASE = "https://xnmlnqaetcaawvsbmhjy.supabase.co";
+const SHARED_PHOTO_QA_SUPABASE = "https://toqmwniuwqinielydgnp.supabase.co";
+const FIREBASE_PROJECT_ID = Deno.env.get("EVIDENCE_FIREBASE_PROJECT_ID") ?? PRODUCTION_FIREBASE;
 const BUCKET = "incident-evidence";
 const MAX_BYTES = 2 * 1024 * 1024;
 const ALLOWED_ID = /^[A-Za-z0-9_-]{1,128}$/;
@@ -121,6 +123,30 @@ async function authorizeIncident(identity: {token: string; uid: string; authTime
     throw new ApiError(403, "INCIDENT_ACCESS_DENIED");
   }
   return { role, status };
+}
+
+function assertSharedPhotoQaScope(uid: string, incidentId: string) {
+  const projectUrl = Deno.env.get("SUPABASE_URL")?.replace(/\/$/, "");
+  if (projectUrl !== SHARED_PHOTO_QA_SUPABASE) {
+    if (FIREBASE_PROJECT_ID === PRODUCTION_FIREBASE && projectUrl !== PRODUCTION_SUPABASE) {
+      throw new ApiError(503, "QA_SCOPE_NOT_CONFIGURED");
+    }
+    return;
+  }
+
+  // Require an explicit Firebase project for the QA deployment.
+  if (Deno.env.get("EVIDENCE_FIREBASE_PROJECT_ID") !== PRODUCTION_FIREBASE) {
+    throw new ApiError(503, "QA_SCOPE_NOT_CONFIGURED");
+  }
+  const approvedUsers = Deno.env.get("EVIDENCE_QA_USER_IDS")?.split(",").map(id => id.trim());
+  const approvedIncidents = Deno.env.get("EVIDENCE_QA_INCIDENT_IDS")?.split(",").map(id => id.trim());
+  if (!approvedUsers?.every(id => ALLOWED_ID.test(id)) ||
+      !approvedIncidents?.every(id => ALLOWED_ID.test(id))) {
+    throw new ApiError(503, "QA_SCOPE_NOT_CONFIGURED");
+  }
+  if (!approvedUsers.includes(uid) || !approvedIncidents.includes(incidentId)) {
+    throw new ApiError(403, "QA_SCOPE_DENIED");
+  }
 }
 
 function adminClient() {
@@ -400,6 +426,8 @@ Deno.serve(async (req) => {
     if (Deno.env.get("EVIDENCE_ACCESS_ENABLED") !== "true") {
       throw new ApiError(503, "EVIDENCE_GATE_NOT_APPROVED");
     }
+
+    assertSharedPhotoQaScope(identity.uid, incidentId);
 
     // G0: disabled/revoked-session check is mandatory before any privileged access.
     try {

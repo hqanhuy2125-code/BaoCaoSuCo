@@ -36,6 +36,9 @@ let fakePort;
 let gatewayPort;
 let handler;
 let gateEnabled = false;
+const productionSupabase = 'https://xnmlnqaetcaawvsbmhjy.supabase.co';
+const qaSupabase = 'https://toqmwniuwqinielydgnp.supabase.co';
+let supabaseUrl, explicitFirebase, qaUsers, qaIncidents;
 let lookupStatus = 200;
 let badAccountShape = false;
 let firestoreStatus = 200;
@@ -70,6 +73,10 @@ function reset() {
   badAccountShape = false;
   firestoreStatus = 200;
   gateEnabled = false;
+  supabaseUrl = productionSupabase;
+  explicitFirebase = undefined;
+  qaUsers = undefined;
+  qaIncidents = undefined;
   writeFixture = false;
   mode = '';
   status = 'NEW';
@@ -132,7 +139,7 @@ async function firebaseHttp(req, res) {
   return respond(res, 404, { error: 'LOCAL_UNKNOWN_HOST' });
 }
 function fakeAdminClient(url, secret) {
-  assert.equal(url, `http://127.0.0.1:${fakePort}/supabase-test-only`);
+  assert.equal(url, supabaseUrl);
   assert.equal(secret, 'LOCAL_FAKE_SERVICE_ROLE');
   stats.admin++;
   return {
@@ -239,7 +246,10 @@ function loadActualCandidate() {
       env: { get(key) {
         if (key === 'EVIDENCE_ACCESS_ENABLED') return gateEnabled ? 'true' : 'false';
         if (key === 'FIREBASE_WEB_API_KEY') return fakeApiKey;
-        if (key === 'SUPABASE_URL') return `http://127.0.0.1:${fakePort}/supabase-test-only`;
+        if (key === 'SUPABASE_URL') return supabaseUrl;
+        if (key === 'EVIDENCE_FIREBASE_PROJECT_ID') return explicitFirebase;
+        if (key === 'EVIDENCE_QA_USER_IDS') return qaUsers;
+        if (key === 'EVIDENCE_QA_INCIDENT_IDS') return qaIncidents;
         if (key === 'SUPABASE_SECRET_KEYS') return JSON.stringify({ default: 'LOCAL_FAKE_SERVICE_ROLE' });
         return undefined;
       } }
@@ -345,6 +355,64 @@ caseTest('G1 gate khóa: JWT sai Firebase project bị chặn', async () => {
 function assertNoProtectedCalls() {
   for (const key of ['lookups', 'firestore', 'admin', 'uploads']) assert.equal(stats[key], 0, key);
 }
+function configureSharedPhotoQa() {
+  supabaseUrl = qaSupabase;
+  explicitFirebase = project;
+  qaUsers = 'residentA,residentB,demoManager';
+  qaIncidents = 'incidentA';
+}
+
+caseTest('Shared Photo QA / locked gateway does not use account or storage services', async () => {
+  configureSharedPhotoQa();
+  expectResult(await request('residentA'), 503, 'EVIDENCE_GATE_NOT_APPROVED');
+  assertNoProtectedCalls();
+});
+
+caseTest('Shared Photo QA / allowlisted Resident and Manager use existing authorization', async () => {
+  configureSharedPhotoQa();
+  gateEnabled = true;
+  expectResult(await request('residentA'), 200);
+  expectResult(await request('demoManager'), 200);
+  expectResult(await request('residentB'), 403, 'INCIDENT_ACCESS_DENIED');
+  assert.equal(stats.admin, 2);
+});
+
+caseTest('Shared Photo QA / omitted UID and incident are denied before backend calls', async () => {
+  configureSharedPhotoQa();
+  gateEnabled = true;
+  qaUsers = 'residentA,demoManager';
+  expectResult(await request('residentB'), 403, 'QA_SCOPE_DENIED');
+  expectResult(await request('demoManager', 'incidentB'), 403, 'QA_SCOPE_DENIED');
+  assertNoProtectedCalls();
+});
+
+caseTest('Shared Photo QA / missing and malformed allowlists fail closed', async () => {
+  configureSharedPhotoQa();
+  gateEnabled = true;
+  qaUsers = undefined;
+  expectResult(await request('residentA'), 503, 'QA_SCOPE_NOT_CONFIGURED');
+  qaUsers = 'residentA';
+  qaIncidents = 'incidentA,';
+  expectResult(await request('residentA'), 503, 'QA_SCOPE_NOT_CONFIGURED');
+  assertNoProtectedCalls();
+});
+
+caseTest('Shared Photo QA / requires the explicit Firebase project', async () => {
+  configureSharedPhotoQa();
+  gateEnabled = true;
+  explicitFirebase = undefined;
+  expectResult(await request('residentA'), 503, 'QA_SCOPE_NOT_CONFIGURED');
+  assertNoProtectedCalls();
+});
+
+caseTest('Shared Photo QA / an unapproved Supabase URL fails closed', async () => {
+  configureSharedPhotoQa();
+  gateEnabled = true;
+  supabaseUrl = 'https://example.invalid';
+  expectResult(await request('residentA'), 503, 'QA_SCOPE_NOT_CONFIGURED');
+  assertNoProtectedCalls();
+});
+
 for (const [name, payload] of [
   ['missing exp', { exp: undefined }],
   ['malformed exp', { exp: 'not-a-date' }],
