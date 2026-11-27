@@ -54,3 +54,16 @@ npm test
 ```
 
 If the emulator is already bound to port 8087 or a dependency/audit warning requires action, record it separately. Never patch Rules or assert PASS without test reporter output from the exact new SHA.
+
+## SEC-02B — EXPERIMENTAL ATOMIC-WRITE CANDIDATE (NOT DEPLOYABLE)
+
+This branch adds an isolated third suite `writepilot.candidate.rules.test.mjs` and `incidents.writepilot.candidate.rules` under `security/rules/`, leaving the root production `firestore.rules` **unchanged**. The candidate attempts matching atomic incident + nested history updates, with a CREATE event, five selected LOG transitions, protected Manager role/owner and `revision/lastEventId`. It is an **unverified research implementation**, not a safe Rules policy.
+
+`npm test` now executes **three independent sequential** suites:
+- SEC-02A baseline: 24 test declarations (root deny-only policy).
+- SEC-02A read-only candidate: 14 test declarations.
+- SEC-02B atomic-write pilot: **28 test declarations** (allowed creates/transitions and expected-deny attacks).
+
+**66 is an anticipated declaration count, NOT a measured PASS.** Use the exact candidate PR SHA, run the tracked `npm install --no-package-lock` then `npm test` inside a separate Windows worktree, and collect actual exit codes and Node test reporters. A failure in the pilot is a design finding; don't delete/relabel tests or weaken security. The pilot covers a subset of replay, stale revision, field tampering and wrong-actor scenarios, but still needs concurrency tests, bad-history cardinality attacks, Unicode/whitespace validation equivalence, query/index checks, Rules access-call budgets and deliberate trusted-backend fallback criteria. Do not mark SEC-02B security PASS without these.
+
+The existing isolated `prepare-emulator.mjs` still copies the exact root production Rules into a gitignored location for the baseline suite. Each suite loads its own Rules through `initializeTestEnvironment` and uses the demo project/localhost. Never run `firebase deploy` or use a production service account or real privileged Manager accounts.
