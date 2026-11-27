@@ -21,6 +21,7 @@ local.properties
 # để tránh lộ project ID và tránh bị abuse quota
 google-services.json
 google-services-debug.json
+/app/src/debug/res/values/evidence_qa_local.xml
 
 # Keystore / Signing — TUYỆT ĐỐI không commit
 *.jks

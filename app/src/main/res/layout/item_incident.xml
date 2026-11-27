@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/card_incident"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/spacing_m"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
+    app:cardCornerRadius="@dimen/radius_l"
+    app:cardElevation="3dp"
+    app:strokeWidth="1dp"
+    app:strokeColor="?attr/colorOnSurface"
+    app:cardBackgroundColor="?attr/colorSurface">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/spacing_l">
+
+        <!-- Top Badges Bar: Priority & Status & Overdue Indicator -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <!-- Priority Badge -->
+            <TextView
+                android:id="@+id/tv_priority_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
+                android:background="@drawable/bg_badge_urgent"
+                android:paddingStart="@dimen/spacing_m"
+                android:paddingTop="@dimen/spacing_xs"
+                android:paddingEnd="@dimen/spacing_m"
+                android:paddingBottom="@dimen/spacing_xs"
+                android:text="Khẩn cấp"
+                android:textColor="@color/status_pending_text"
+                android:textSize="@dimen/text_caption"
+                android:textStyle="bold" />
+
+            <!-- Overdue Badge Indicator -->
+            <TextView
+                android:id="@+id/tv_overdue_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_toEndOf="@id/tv_priority_badge"
+                android:layout_marginStart="@dimen/spacing_s"
+                android:background="@drawable/bg_badge_overdue"
+                android:paddingStart="@dimen/spacing_s"
+                android:paddingTop="@dimen/spacing_xs"
+                android:paddingEnd="@dimen/spacing_s"
+                android:paddingBottom="@dimen/spacing_xs"
+                android:text="@string/filter_overdue"
+                android:textColor="@color/status_pending_text"
+                android:textSize="@dimen/text_caption"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <!-- Status Badge -->
+            <TextView
+                android:id="@+id/tv_status_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:background="@drawable/bg_badge_pending"
+                android:paddingStart="@dimen/spacing_m"
+                android:paddingTop="@dimen/spacing_xs"
+                android:paddingEnd="@dimen/spacing_m"
+                android:paddingBottom="@dimen/spacing_xs"
+                android:text="Chờ tiếp nhận"
+                android:textColor="@color/status_pending_text"
+                android:textSize="@dimen/text_caption"
+                android:textStyle="bold" />
+        </RelativeLayout>
+
+        <!-- Incident Title -->
+        <TextView
+            android:id="@+id/tv_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_m"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:text="Hỏng vòi nước bồn rửa chén"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="@dimen/text_section_title"
+            android:textStyle="bold" />
+
+        <!-- Location Info -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_s"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="@dimen/icon_size_s"
+                android:layout_height="@dimen/icon_size_s"
+                android:src="@drawable/ic_location"
+                app:tint="?attr/colorOnSurfaceVariant"
+                android:contentDescription="@string/incident_location_hint" />
+
+            <TextView
+                android:id="@+id/tv_location"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_s"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="Phòng 302 - Nhà bếp"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="@dimen/text_body" />
+        </LinearLayout>
+
+        <!-- Footer: Time & Handler -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_m"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:src="@drawable/ic_clock"
+                app:tint="?attr/colorOnSurfaceVariant"
+                android:contentDescription="@string/app_name" />
+
+            <TextView
+                android:id="@+id/tv_timestamp"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_xs"
+                android:layout_weight="1"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="2 giờ trước"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="@dimen/text_secondary" />
+
+            <TextView
+                android:id="@+id/tv_handler"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="Kỹ thuật: Anh Nam"
+                android:textColor="@color/f7_link"
+                android:textSize="@dimen/text_secondary"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

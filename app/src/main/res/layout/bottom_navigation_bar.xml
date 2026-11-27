@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_bar_root_container"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:paddingStart="@dimen/spacing_m"
+    android:paddingEnd="@dimen/spacing_m"
+    android:paddingTop="@dimen/spacing_xs"
+    android:paddingBottom="@dimen/spacing_m">
+
+    <!-- Clear Horizontal Separator Line / Divider directly above Bottom Navigation Bar -->
+    <View
+        android:id="@+id/nav_divider_line"
+        android:layout_width="match_parent"
+        android:layout_height="1.5dp"
+        android:layout_marginBottom="8dp"
+        android:background="?attr/colorOnSurface"
+        android:alpha="0.18" />
+
+    <!-- Floating Task Bar Bubble Surface Container -->
+    <LinearLayout
+        android:id="@+id/custom_bottom_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="@dimen/nav_bar_height"
+        android:background="@drawable/bg_floating_nav_bar"
+        android:elevation="10dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/spacing_xs"
+        android:paddingEnd="@dimen/spacing_xs"
+        android:paddingTop="@dimen/spacing_xs"
+        android:paddingBottom="@dimen/spacing_xs">
+
+        <!-- 1. Home Tab (Trang chủ) -->
+        <LinearLayout
+            android:id="@+id/nav_item_home"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingTop="@dimen/spacing_2xs"
+            android:paddingBottom="@dimen/spacing_2xs">
+
+            <ImageView
+                android:id="@+id/iv_nav_home"
+                android:layout_width="@dimen/icon_size_m"
+                android:layout_height="@dimen/icon_size_m"
+                android:src="@drawable/ic_nav_home"
+                app:tint="@color/f7_nav_active"
+                android:contentDescription="@string/nav_home" />
+
+            <TextView
+                android:id="@+id/tv_nav_home"
+                android:gravity="center"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_2xs"
+                android:text="@string/nav_home"
+                android:textColor="@color/f7_nav_active"
+                android:textSize="@dimen/text_nav_label"
+                android:textStyle="bold" />
+
+            <!-- Active Dot Indicator -->
+            <View
+                android:id="@+id/dot_nav_home"
+                android:layout_width="5dp"
+                android:layout_height="5dp"
+                android:layout_marginTop="3dp"
+                android:background="@drawable/bg_active_dot"
+                android:visibility="visible" />
+        </LinearLayout>
+
+        <!-- 2. Explore Tab (Khám phá) -->
+        <LinearLayout
+            android:id="@+id/nav_item_explore"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingTop="@dimen/spacing_2xs"
+            android:paddingBottom="@dimen/spacing_2xs">
+
+            <ImageView
+                android:id="@+id/iv_nav_explore"
+                android:layout_width="@dimen/icon_size_m"
+                android:layout_height="@dimen/icon_size_m"
+                android:src="@drawable/ic_nav_explore"
+                app:tint="@color/f7_nav"
+                android:contentDescription="@string/nav_explore" />
+
+            <TextView
+                android:id="@+id/tv_nav_explore"
+                android:gravity="center"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_2xs"
+                android:text="@string/nav_explore"
+                android:textColor="@color/f7_nav"
+                android:textSize="@dimen/text_nav_label" />
+
+            <View
+                android:id="@+id/dot_nav_explore"
+                android:layout_width="5dp"
+                android:layout_height="5dp"
+                android:layout_marginTop="3dp"
+                android:background="@drawable/bg_active_dot"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- 3. Prominent Center Camera Button Container -->
+        <LinearLayout
+            android:id="@+id/nav_item_projects"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:layout_weight="1.2"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/btn_camera_fab"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_camera_fab"
+                android:clickable="false"
+                android:focusable="false"
+                android:elevation="4dp"
+                android:gravity="center">
+
+                <ImageView
+                    android:id="@+id/iv_nav_projects"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:src="@drawable/ic_camera"
+                    app:tint="@color/white"
+                    android:clickable="false"
+                    android:focusable="false"
+                    android:contentDescription="@string/gd_ui_camera_report" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_nav_projects"
+                android:gravity="center"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
+
+            <View
+                android:id="@+id/dot_nav_projects"
+                android:layout_width="5dp"
+                android:layout_height="5dp"
+                android:layout_marginTop="2dp"
+                android:background="@drawable/bg_active_dot"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- 4. Saved Tab (Đã lưu) -->
+        <LinearLayout
+            android:id="@+id/nav_item_saved"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingTop="@dimen/spacing_2xs"
+            android:paddingBottom="@dimen/spacing_2xs">
+
+            <ImageView
+                android:id="@+id/iv_nav_saved"
+                android:layout_width="@dimen/icon_size_m"
+                android:layout_height="@dimen/icon_size_m"
+                android:src="@drawable/ic_nav_saved"
+                app:tint="@color/f7_nav"
+                android:contentDescription="@string/nav_saved" />
+
+            <TextView
+                android:id="@+id/tv_nav_saved"
+                android:gravity="center"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_2xs"
+                android:text="@string/nav_saved"
+                android:textColor="@color/f7_nav"
+                android:textSize="@dimen/text_nav_label" />
+
+            <View
+                android:id="@+id/dot_nav_saved"
+                android:layout_width="5dp"
+                android:layout_height="5dp"
+                android:layout_marginTop="3dp"
+                android:background="@drawable/bg_active_dot"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- 5. Profile Tab (Cá nhân) -->
+        <LinearLayout
+            android:id="@+id/nav_item_profile"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingTop="@dimen/spacing_2xs"
+            android:paddingBottom="@dimen/spacing_2xs">
+
+            <ImageView
+                android:id="@+id/iv_nav_profile"
+                android:layout_width="@dimen/icon_size_m"
+                android:layout_height="@dimen/icon_size_m"
+                android:src="@drawable/ic_nav_profile"
+                app:tint="@color/f7_nav"
+                android:contentDescription="@string/nav_profile_tab" />
+
+            <TextView
+                android:id="@+id/tv_nav_profile"
+                android:gravity="center"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_2xs"
+                android:text="@string/nav_profile_tab"
+                android:textColor="@color/f7_nav"
+                android:textSize="@dimen/text_nav_label" />
+
+            <View
+                android:id="@+id/dot_nav_profile"
+                android:layout_width="5dp"
+                android:layout_height="5dp"
+                android:layout_marginTop="3dp"
+                android:background="@drawable/bg_active_dot"
+                android:visibility="gone" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>
