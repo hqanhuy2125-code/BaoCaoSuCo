@@ -1,16 +1,18 @@
 package com.example.baocaosuco.manager;
 
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.appcompat.app.AppCompatDelegate;
 import com.example.baocaosuco.integration.ui.IncidentUiText;
-import android.widget.Toast;
+
 
 import com.example.baocaosuco.MainActivity;
 import com.example.baocaosuco.R;
@@ -44,15 +46,24 @@ public class ManagerMainActivity extends AppCompatActivity {
         View theme = findViewById(R.id.theme_toggle_button);
         theme.setOnClickListener(v -> {
             int mask = getResources().getConfiguration().uiMode
-                    & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
-            AppCompatDelegate.setDefaultNightMode(mask == android.content.res.Configuration.UI_MODE_NIGHT_YES
+                    & Configuration.UI_MODE_NIGHT_MASK;
+            AppCompatDelegate.setDefaultNightMode(mask == Configuration.UI_MODE_NIGHT_YES
                     ? AppCompatDelegate.MODE_NIGHT_NO : AppCompatDelegate.MODE_NIGHT_YES);
         });
         int[] unsupported = {R.id.nav_item_explore, R.id.nav_item_projects, R.id.nav_item_profile};
         for (int id : unsupported) {
             View tab = findViewById(id);
-            if (tab != null) tab.setOnClickListener(v -> Toast.makeText(this,
-                    "Chức năng chưa hỗ trợ", Toast.LENGTH_SHORT).show());
+            if (tab != null) tab.setVisibility(View.GONE);
+        }
+        int[] running = {R.id.nav_item_home, R.id.nav_item_saved};
+        for (int id : running) {
+            View tab = findViewById(id);
+            if (tab != null) {
+                LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) tab.getLayoutParams();
+                params.width = 0;
+                params.weight = 1f;
+                tab.setLayoutParams(params);
+            }
         }
         tvGreeting = findViewById(R.id.welcome_text);
         tvName = findViewById(R.id.tv_header_resident_name);
