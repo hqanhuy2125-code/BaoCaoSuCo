@@ -40,7 +40,15 @@
     <string name="error_loading">Đã có lỗi xảy ra khi tải dữ liệu</string>
     <string name="filter_all">Tất cả</string>
     <string name="filter_completed">Đã hoàn thành</string>
-    <string name="filter_overdue">Quá hạn (&gt;24h)</string>
+    <string name="filter_overdue">Quá hạn</string>
+    <string name="account_profile_title">Hồ sơ tài khoản</string>
+    <string name="account_profile_loading">Đang tải hồ sơ…</string>
+    <string name="account_profile_error">Không thể xác minh hồ sơ tài khoản. Vui lòng thử lại.</string>
+    <string name="account_profile_retry">Thử lại</string>
+    <string name="account_profile_close">Đóng</string>
+    <string name="account_profile_details">Họ tên: %1$s\nEmail: %2$s\nVai trò: %3$s</string>
+    <string name="account_profile_resident">Cư dân</string>
+    <string name="account_profile_manager">Quản lý</string>
     <string name="filter_pending">Chờ tiếp nhận</string>
     <string name="filter_processing">Đang xử lý</string>
     <string name="incident_desc_hint">Mô tả chi tiết sự cố và tình trạng hiện tại</string>

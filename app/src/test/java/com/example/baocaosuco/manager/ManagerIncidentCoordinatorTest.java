@@ -35,6 +35,12 @@ public class ManagerIncidentCoordinatorTest {
     private static final class Api implements IncidentRepository.Manager {
         IncidentRepository.Callback<List<IncidentSnapshot>> list;
         IncidentRepository.Callback<IncidentSnapshot> delayedTransition;
+        IncidentRepository.Callback<IncidentSnapshot> byId;
+        String requestedId;
+        @Override public void get(String id, IncidentRepository.Callback<IncidentSnapshot> cb) {
+            requestedId = id;
+            byId = cb;
+        }
         CommandPrecondition lastPrecondition;
         String handler;
         int actions;
@@ -97,6 +103,24 @@ public class ManagerIncidentCoordinatorTest {
         assertTrue(c.select("one"));
         assertEquals("one", view.detail.getId());
         assertFalse(c.select("missing"));
+    }
+
+    @Test public void directDetailOutsideListCanAssignButRejectsItsOldRevision() {
+        Api api = new Api();
+        Screen view = new Screen();
+        ManagerIncidentCoordinator c = new ManagerIncidentCoordinator(api, view);
+        IncidentSnapshot oldest = item("older-than-list", "LOW", IncidentStatus.NEW, 0, 1000);
+        assertTrue(c.loadDetail(oldest.getId()));
+        assertEquals(oldest.getId(), api.requestedId);
+        assertNull("Must not reload the latest 50", api.list);
+        api.byId.onSuccess(oldest);
+        assertSame(oldest, view.detail);
+        assertTrue(c.assign(oldest, "QA handler"));
+        api.delayedTransition.onSuccess(oldest.withTransition(IncidentStatus.ASSIGNED,
+                "QA handler", 3000, "assign-event"));
+        assertFalse(c.assign(oldest, "QA handler"));
+        assertEquals(1, api.actions);
+        assertEquals(IncidentRepository.Error.CONFLICT, view.errors.get(0));
     }
 
     @Test public void assignRequiresFreshCachedVersionAndAValidHandler() {

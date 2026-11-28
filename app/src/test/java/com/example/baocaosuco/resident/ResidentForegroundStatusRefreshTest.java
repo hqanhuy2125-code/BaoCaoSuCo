@@ -181,6 +181,21 @@ public class ResidentForegroundStatusRefreshTest {
         assertTrue(f.view.changes.isEmpty());
     }
 
+    @Test public void unchangedPageIsRepublishedAfterAVisibleErrorWithoutAnotherNotice() {
+        Fixture f = new Fixture();
+        IncidentSnapshot assigned = item("i1", IncidentStatus.ASSIGNED, 1);
+        f.refresh.onStart();
+        f.repo.succeed(0, assigned);
+        f.clock.tick();
+        f.repo.calls.get(1).onError(IncidentRepository.Error.NETWORK);
+        f.clock.tick();
+        f.repo.succeed(2, assigned);
+
+        assertEquals(2, f.view.pages.size());
+        assertEquals(Collections.singletonList(assigned), f.view.pages.get(1));
+        assertTrue(f.view.changes.isEmpty());
+    }
+
     @Test public void invalidOrDuplicateRowsFailClosedWithoutPublishing() {
         Fixture f = new Fixture();
         f.refresh.onStart();

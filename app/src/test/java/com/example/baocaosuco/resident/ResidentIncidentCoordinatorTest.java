@@ -41,6 +41,13 @@ public class ResidentIncidentCoordinatorTest {
         NewIncidentInput input;
         CommandPrecondition precondition;
         Boolean resolved;
+        final List<String> attemptIds = new ArrayList<>();
+        @Override public void create(NewIncidentInput value, String attemptId,
+                                     IncidentRepository.Callback<IncidentSnapshot> cb) {
+            attemptIds.add(attemptId);
+            if (attemptIds.size() == 1) cb.onError(IncidentRepository.Error.NETWORK);
+            else cb.onSuccess(item(IncidentStatus.NEW, 0));
+        }
         int creates;
         int confirmations;
         @Override public void create(NewIncidentInput value, IncidentRepository.Callback<IncidentSnapshot> cb) {
@@ -71,6 +78,20 @@ public class ResidentIncidentCoordinatorTest {
         assertEquals("NEW", screen.saved.getStatusCode());
         assertEquals(1, api.creates);
         assertEquals(Boolean.FALSE, screen.busy.get(screen.busy.size()-1));
+    }
+
+    @Test public void networkFailureRetryForwardsTheSameAttempt() {
+        Api api = new Api();
+        Screen screen = new Screen();
+        ResidentIncidentCoordinator c = new ResidentIncidentCoordinator(api, screen);
+        NewIncidentInput draft = new NewIncidentInput("Light", "Broken bulb", "Block A", "LOW");
+        String attempt = "12345678-1234-1234-1234-123456789abc";
+        assertTrue(c.submit(draft, attempt));
+        assertEquals(IncidentRepository.Error.NETWORK, screen.errors.get(0));
+        assertTrue(c.submit(draft, attempt));
+        assertEquals(java.util.Arrays.asList(attempt, attempt), api.attemptIds);
+        assertEquals(0, api.creates);
+        assertEquals(IncidentStatus.NEW, screen.saved.getStatus());
     }
 
     @Test public void emptyFormAndUnsupportedPriorityDoNotHitRepository() {

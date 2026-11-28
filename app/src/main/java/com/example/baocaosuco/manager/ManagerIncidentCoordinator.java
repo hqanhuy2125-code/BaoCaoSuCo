@@ -122,6 +122,32 @@ public final class ManagerIncidentCoordinator {
         return false;
     }
 
+    private IncidentSnapshot directDetail;
+
+    public boolean loadDetail(String incidentId) {
+        if (incidentId == null || incidentId.trim().isEmpty() || incidentId.contains("/")) {
+            invalid(IncidentRepository.Error.NOT_FOUND);
+            return false;
+        }
+        final int token = begin();
+        if (token < 0) return false;
+        directDetail = null;
+        repository.get(incidentId, new IncidentRepository.Callback<IncidentSnapshot>() {
+            @Override public void onSuccess(IncidentSnapshot found) {
+                if (!current(token)) return;
+                if (found == null || !incidentId.equals(found.getId())) {
+                    failure(token, IncidentRepository.Error.SECURITY_NOT_READY);
+                    return;
+                }
+                directDetail = found;
+                finish(token);
+                if (canDeliver(token)) view.onDetail(found);
+            }
+            @Override public void onError(IncidentRepository.Error error) { failure(token, error); }
+        });
+        return true;
+    }
+
     private void publishRows() {
         if (!active) return;
         List<IncidentSnapshot> page = new ArrayList<>();
@@ -179,8 +205,10 @@ public final class ManagerIncidentCoordinator {
     }
 
     private boolean transition(IncidentSnapshot observed, String action, String handler) {
-        // Never act on a snapshot outside the current Manager page.
-        boolean loadedAndCurrent = false;
+        boolean loadedAndCurrent = directDetail != null
+                && directDetail.getId().equals(observed.getId())
+                && directDetail.getRevision() == observed.getRevision()
+                && directDetail.getStatus() == observed.getStatus();
         for (IncidentSnapshot row : loaded) {
             if (row.getId().equals(observed.getId()) &&
                     row.getRevision() == observed.getRevision() &&
@@ -210,6 +238,9 @@ public final class ManagerIncidentCoordinator {
                     }
                 }
                 loaded = Collections.unmodifiableList(next);
+                if (directDetail != null && directDetail.getId().equals(updated.getId())) {
+                    directDetail = updated;
+                }
                 finish(token);
                 if (canDeliver(token)) view.onSaved(updated);
                 if (canDeliver(token)) publishRows();

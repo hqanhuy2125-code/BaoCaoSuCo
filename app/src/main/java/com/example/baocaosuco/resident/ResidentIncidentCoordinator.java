@@ -138,9 +138,26 @@ public final class ResidentIncidentCoordinator {
             invalid();
             return false;
         }
+        return submit(input, null);
+    }
+
+    public boolean submit(NewIncidentInput input, String attemptId) {
         final int token = begin();
         if (token < 0) return false;
-        repository.create(input, new IncidentRepository.Callback<IncidentSnapshot>() {
+        if (attemptId == null) repository.create(input, saveCallback(token));
+        else repository.create(input, attemptId, saveCallback(token));
+        return true;
+    }
+
+    public boolean reconcileCreate(String attemptId) {
+        final int token = begin();
+        if (token < 0) return false;
+        repository.reconcileCreate(attemptId, saveCallback(token));
+        return true;
+    }
+
+    private IncidentRepository.Callback<IncidentSnapshot> saveCallback(int token) {
+        return new IncidentRepository.Callback<IncidentSnapshot>() {
             @Override public void onSuccess(IncidentSnapshot incident) {
                 if (!current(token)) return;
                 if (incident == null) { failure(token, IncidentRepository.Error.UNKNOWN); return; }
@@ -148,12 +165,15 @@ public final class ResidentIncidentCoordinator {
                 if (canDeliver(token)) view.onSaved(incident);
             }
             @Override public void onError(IncidentRepository.Error error) { failure(token, error); }
-        });
-        return true;
+        };
     }
 
     /** B05: only a displayed COMPLETED snapshot may be confirmed/reopened. */
     public boolean confirm(IncidentSnapshot observed, boolean resolved) {
+        return confirm(observed, resolved, null);
+    }
+
+    public boolean confirm(IncidentSnapshot observed, boolean resolved, String note) {
         if (observed == null || observed.getStatus() != IncidentStatus.COMPLETED) {
             invalid();
             return false;
@@ -162,7 +182,7 @@ public final class ResidentIncidentCoordinator {
         if (token < 0) return false;
         CommandPrecondition expected = new CommandPrecondition(
                 observed.getStatusCode(), observed.getRevision(), UUID.randomUUID().toString());
-        repository.confirm(observed.getId(), expected, resolved,
+        repository.confirm(observed.getId(), expected, resolved, note,
                 new IncidentRepository.Callback<IncidentSnapshot>() {
             @Override public void onSuccess(IncidentSnapshot incident) {
                 if (!current(token)) return;

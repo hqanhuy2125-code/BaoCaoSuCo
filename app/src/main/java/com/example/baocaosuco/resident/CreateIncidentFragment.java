@@ -1,6 +1,7 @@
 package com.example.baocaosuco.resident;
 
 import android.os.Bundle;
+import android.util.AtomicFile;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,6 +23,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.example.baocaosuco.data.incident.IncidentHistorySnapshot;
 import com.example.baocaosuco.data.incident.IncidentSnapshot;
+import com.example.baocaosuco.data.incident.NewIncidentInput;
 import com.example.baocaosuco.data.repository.FirebaseIncidentRepository;
 import com.example.baocaosuco.data.repository.IncidentRepository;
 import com.example.baocaosuco.resident.photo.IncidentPhotoController;
@@ -32,7 +34,17 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.textfield.TextInputEditText;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 import com.example.baocaosuco.integration.ui.IncidentUiText;
 
 public class CreateIncidentFragment extends Fragment implements ResidentIncidentCoordinator.View, IncidentPhotoViewBinder.ErrorHandler {
@@ -54,6 +66,10 @@ public class CreateIncidentFragment extends Fragment implements ResidentIncident
     private String savedIncident;
     private String savedOwner;
     private String draftOwner;
+    private String submission;
+    private NewIncidentInput submittedInput;
+    private boolean draftUnreadable;
+    private AtomicFile draftFile;
     private SupabaseEvidenceClient evidence;
     private FirebaseAuth.AuthStateListener authListener;
     private TextView message;
@@ -92,6 +108,11 @@ public class CreateIncidentFragment extends Fragment implements ResidentIncident
             }
         };
         coordinator = new ResidentIncidentCoordinator(new FirebaseIncidentRepository().resident(), this);
+        if (draftOwner != null && draftOwner.equals(currentUid()) && savedIncident == null) {
+            File privateDir = requireContext().getNoBackupFilesDir();
+            draftFile = new AtomicFile(new File(privateDir, "resident-submit-" + android.net.Uri.encode(draftOwner)));
+            restoreSubmission();
+        }
 
         LinearLayout formContainer = (LinearLayout) ((ViewGroup) cvPhotoPreview.getParent());
         int index = formContainer.indexOfChild(cvPhotoPreview);
@@ -156,6 +177,10 @@ public class CreateIncidentFragment extends Fragment implements ResidentIncident
 
         if (savedIncident != null) {
             showMessage(savedInstanceState.getString("evidence_message", "Báo cáo đã lưu. Có thể gửi lại ảnh."));
+        } else if (draftUnreadable) {
+            showMessage("Không thể đọc báo cáo đang chờ trên thiết bị. Hãy mở lại màn hình để thử lại.");
+        } else if (submission != null) {
+            showMessage("Có báo cáo chưa xác nhận. Nhấn gửi lại để tiếp tục cùng báo cáo.");
         }
         btnSubmit.setOnClickListener(v -> {
             if (savedIncident != null) uploadEvidence();
@@ -166,8 +191,26 @@ public class CreateIncidentFragment extends Fragment implements ResidentIncident
         return view;
     }
 
+    @Override
+    public void onViewStateRestored(@Nullable Bundle state) {
+        super.onViewStateRestored(state);
+        if (submittedInput == null || !draftOwner.equals(currentUid())) return;
+        etTitle.setText(submittedInput.getTitle());
+        etLocation.setText(submittedInput.getLocation());
+        etDesc.setText(submittedInput.getDescription());
+        int priority = R.id.rb_priority_normal;
+        if ("URGENT".equals(submittedInput.getPriority())) priority = R.id.rb_priority_urgent;
+        else if ("LOW".equals(submittedInput.getPriority())) priority = R.id.rb_priority_low;
+        rgPriority.check(priority);
+    }
+
     private void submitIncident() {
         if (savedIncident != null || submitting || photoBridge.isBusy() || !btnSubmit.isEnabled()) return;
+        if (draftFile == null || draftUnreadable || !draftOwner.equals(currentUid())) return;
+        if (submittedInput != null) {
+            coordinator.submit(submittedInput, submission);
+            return;
+        }
         String title = etTitle.getText() != null ? etTitle.getText().toString().trim() : "";
         String location = etLocation.getText() != null ? etLocation.getText().toString().trim() : "";
         String desc = etDesc.getText() != null ? etDesc.getText().toString().trim() : "";
@@ -179,7 +222,54 @@ public class CreateIncidentFragment extends Fragment implements ResidentIncident
             priority = "LOW";
         }
 
-        coordinator.submit(title, desc, location, priority);
+        final NewIncidentInput input;
+        try {
+            input = new NewIncidentInput(title, desc, location, priority);
+        } catch (IllegalArgumentException invalid) {
+            onError(IncidentRepository.Error.VALIDATION);
+            return;
+        }
+        String id = UUID.randomUUID().toString();
+        if (!persistSubmission(id, input)) {
+            showMessage("Không thể lưu báo cáo đang chờ trên thiết bị. Hãy thử lại.");
+            return;
+        }
+        submission = id;
+        submittedInput = input;
+        coordinator.submit(input, id);
+    }
+
+    private void restoreSubmission() {
+        try {
+            JSONObject draft = new JSONObject(new String(draftFile.readFully(), StandardCharsets.UTF_8));
+            String id = UUID.fromString(draft.getString("id")).toString();
+            NewIncidentInput input = new NewIncidentInput(draft.getString("title"), draft.getString("description"),
+                    draft.getString("location"), draft.getString("priority"));
+            submission = id;
+            submittedInput = input;
+        } catch (FileNotFoundException absent) {
+            draftUnreadable = draftFile.getBaseFile().exists();
+        } catch (IOException | JSONException | IllegalArgumentException invalid) {
+            draftUnreadable = true;
+        }
+    }
+
+    private boolean persistSubmission(String id, NewIncidentInput input) {
+        FileOutputStream stream = null;
+        try {
+            JSONObject draft = new JSONObject().put("id", id).put("title", input.getTitle())
+                    .put("description", input.getDescription()).put("location", input.getLocation())
+                    .put("priority", input.getPriority());
+            byte[] expected = draft.toString().getBytes(StandardCharsets.UTF_8);
+            stream = draftFile.startWrite();
+            stream.write(expected);
+            draftFile.finishWrite(stream);
+            stream = null;
+            return Arrays.equals(expected, draftFile.readFully());
+        } catch (IOException | JSONException failure) {
+            if (stream != null) draftFile.failWrite(stream);
+            return false;
+        }
     }
 
     @Override
@@ -224,16 +314,18 @@ public class CreateIncidentFragment extends Fragment implements ResidentIncident
         boolean verified = ((ResidentMainActivity) requireActivity()).isResidentVerified()
                 && draftOwner != null && draftOwner.equals(currentUid());
         boolean persisted = savedIncident != null;
+        boolean editable = verified && !busy && !persisted && submission == null && !draftUnreadable;
         photoViewBinder.setResidentVerified(verified && !busy && !persisted);
-        etTitle.setEnabled(!busy && !persisted);
-        etLocation.setEnabled(!busy && !persisted);
-        etDesc.setEnabled(!busy && !persisted);
+        etTitle.setEnabled(editable);
+        etLocation.setEnabled(editable);
+        etDesc.setEnabled(editable);
         for (int i = 0; i < rgPriority.getChildCount(); i++) {
-            rgPriority.getChildAt(i).setEnabled(!busy && !persisted);
+            rgPriority.getChildAt(i).setEnabled(editable);
         }
         pbLoading.setVisibility(busy ? View.VISIBLE : View.GONE);
         if (persisted) btnSubmit.setText("Thử gửi lại ảnh");
-        btnSubmit.setEnabled(verified && !busy && (!persisted
+        else if (submission != null) btnSubmit.setText("Thử gửi lại báo cáo");
+        btnSubmit.setEnabled(verified && !busy && !draftUnreadable && (!persisted
                 || (retryPhoto && savedOwner != null && savedOwner.equals(currentUid())
                     && photoBridge.currentUri() != null)));
     }
@@ -250,6 +342,11 @@ public class CreateIncidentFragment extends Fragment implements ResidentIncident
     public void onSaved(IncidentSnapshot incident) {
         savedIncident = incident.getId();
         savedOwner = incident.getResidentId();
+        if (submission != null && submission.equals(savedIncident) && draftOwner.equals(savedOwner)) {
+            draftFile.delete();
+        }
+        submission = null;
+        submittedInput = null;
         if (photoBridge.currentUri() == null) {
             Toast.makeText(requireContext(), "Đã lưu báo cáo.", Toast.LENGTH_SHORT).show();
             ((ResidentMainActivity) requireActivity()).switchToHome();
@@ -296,7 +393,8 @@ public class CreateIncidentFragment extends Fragment implements ResidentIncident
 
     @Override
     public void onError(IncidentRepository.Error error) {
-        showMessage(IncidentUiText.error(error));
+        showMessage(IncidentUiText.error(error)
+                + (submission == null ? "" : " Báo cáo chưa được xác nhận. Hãy thử lại với cùng nội dung."));
     }
 
     @Override

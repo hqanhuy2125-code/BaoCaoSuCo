@@ -9,26 +9,25 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import com.example.baocaosuco.R;
-import com.example.baocaosuco.data.incident.IncidentSnapshot;
 import com.example.baocaosuco.data.repository.FirebaseIncidentRepository;
-import com.example.baocaosuco.data.repository.IncidentRepository;
 import com.example.baocaosuco.integration.ui.IncidentListUi;
-import java.util.List;
 
-public class ManagerListFragment extends Fragment implements ManagerIncidentCoordinator.View {
-    private ManagerIncidentCoordinator coordinator;
+public class ManagerListFragment extends Fragment {
+    private IncidentListUi.PageLoader pages;
     private IncidentListUi ui;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle state) {
         View view = inflater.inflate(R.layout.fragment_manager_list, container, false);
-        coordinator = new ManagerIncidentCoordinator(new FirebaseIncidentRepository().manager(), this);
-        ui = new IncidentListUi(view, true, coordinator::loadList, incident -> {
+        ui = new IncidentListUi(view, true, this::reload, incident -> {
             Intent intent = new Intent(requireContext(), ManagerDetailActivity.class);
             intent.putExtra("incident_id", incident.getId());
             startActivity(intent);
         });
+        pages = ui.bindPaging(new FirebaseIncidentRepository().managerPages());
+        ui.setOnFilterChanged(filter -> ((ManagerMainActivity) requireActivity())
+                .showListNavigation(filter == R.id.chip_mgr_overdue));
         if (state != null) ui.restoreSortMode(state.getString("manager_sort"));
         return view;
     }
@@ -42,21 +41,25 @@ public class ManagerListFragment extends Fragment implements ManagerIncidentCoor
     @Override
     public void onResume() {
         super.onResume();
-        coordinator.loadList();
+        reload();
+    }
+
+    @Override
+    public void onPause() {
+        pages.clear();
+        super.onPause();
     }
 
     @Override
     public void onDestroyView() {
-        coordinator.close();
+        pages.clear();
+        pages = null;
         ui = null;
         super.onDestroyView();
     }
 
-    @Override public void onBusy(boolean busy) { ui.busy(busy); }
-    @Override public void onRows(List<IncidentSnapshot> rows) { ui.showRows(rows); }
-    @Override public void onError(IncidentRepository.Error error) { ui.showError(error); }
-    @Override public void onSaved(IncidentSnapshot snapshot) {}
-    @Override public void onDetail(IncidentSnapshot snapshot) {}
+    private void reload() { pages.restart(); }
+
     void showOverdue() { if (ui != null) ui.showOverdue(); }
     void showAll() { if (ui != null) ui.showAll(); }
 }

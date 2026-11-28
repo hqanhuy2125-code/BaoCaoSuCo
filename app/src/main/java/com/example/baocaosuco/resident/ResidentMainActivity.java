@@ -1,16 +1,22 @@
 package com.example.baocaosuco.resident;
 
+import android.app.Dialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.Fragment;
 import androidx.appcompat.app.AppCompatDelegate;
 import com.example.baocaosuco.integration.ui.IncidentUiText;
-import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
 import com.example.baocaosuco.resident.photo.IncidentPhotoController;
 import com.example.baocaosuco.resident.photo.IncidentPhotoProcessor;
@@ -22,6 +28,9 @@ import com.example.baocaosuco.auth.AuthRepositories;
 import com.example.baocaosuco.auth.AuthRepository;
 import com.example.baocaosuco.auth.LoginActivity;
 import com.example.baocaosuco.data.model.User;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 public class ResidentMainActivity extends AppCompatActivity {
 
@@ -89,12 +98,6 @@ public class ResidentMainActivity extends AppCompatActivity {
             AppCompatDelegate.setDefaultNightMode(mask == android.content.res.Configuration.UI_MODE_NIGHT_YES
                     ? AppCompatDelegate.MODE_NIGHT_NO : AppCompatDelegate.MODE_NIGHT_YES);
         });
-        int[] unsupported = {R.id.nav_item_explore, R.id.nav_item_projects, R.id.nav_item_profile, R.id.nav_item_saved};
-        for (int id : unsupported) {
-            View tab = findViewById(id);
-            if (tab != null) tab.setOnClickListener(v -> Toast.makeText(this,
-                    "Chức năng chưa hỗ trợ", Toast.LENGTH_SHORT).show());
-        }
         tvGreeting = findViewById(R.id.welcome_text);
         tvName = findViewById(R.id.tv_header_resident_name);
         tvEmail = findViewById(R.id.tv_header_resident_email);
@@ -137,11 +140,16 @@ public class ResidentMainActivity extends AppCompatActivity {
         }
 
         View navHome = findViewById(R.id.nav_item_home);
+        View navCreate = findViewById(R.id.nav_item_projects);
         View btnCameraFab = findViewById(R.id.btn_camera_fab);
 
         if (navHome != null) {
             navHome.setOnClickListener(v -> switchToHome());
         }
+        navCreate.setOnClickListener(v -> switchToCreateIncident());
+        findViewById(R.id.nav_item_profile).setOnClickListener(v -> {
+            if (residentVerified) AccountProfileDialog.open(this, User.ROLE_RESIDENT);
+        });
         if (btnCameraFab != null) {
             btnCameraFab.setOnClickListener(v -> switchToCreateIncident());
         }
@@ -175,6 +183,13 @@ public class ResidentMainActivity extends AppCompatActivity {
 
     private void syncFormChrome(boolean form) {
         formBack.setEnabled(form);
+        findViewById(R.id.nav_item_home).setSelected(!form);
+        findViewById(R.id.nav_item_projects).setSelected(form);
+        int color = ContextCompat.getColor(this, form ? R.color.f7_nav : R.color.f7_nav_active);
+        ((ImageView) findViewById(R.id.iv_nav_home)).setColorFilter(color);
+        ((TextView) findViewById(R.id.tv_nav_home)).setTextColor(color);
+        findViewById(R.id.dot_nav_home).setVisibility(form ? View.GONE : View.VISIBLE);
+        findViewById(R.id.dot_nav_projects).setVisibility(form ? View.VISIBLE : View.GONE);
         findViewById(R.id.container_merged_header).setVisibility(form ? View.GONE : View.VISIBLE);
     }
 
@@ -210,5 +225,97 @@ public class ResidentMainActivity extends AppCompatActivity {
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
+    }
+
+    /** A read-only destination shared by the two role shells. */
+    public static final class AccountProfileDialog extends DialogFragment {
+        private static final String TAG = "own-account-profile";
+        private static final String ROLE = "role";
+        private int generation;
+
+        public static void open(AppCompatActivity activity, String role) {
+            FragmentManager fragments = activity.getSupportFragmentManager();
+            if (fragments.isStateSaved() || fragments.findFragmentByTag(TAG) != null) return;
+            Bundle arguments = new Bundle();
+            arguments.putString(ROLE, role);
+            AccountProfileDialog profile = new AccountProfileDialog();
+            profile.setArguments(arguments);
+            profile.showNow(fragments, TAG);
+        }
+
+        @NonNull
+        @Override
+        public Dialog onCreateDialog(Bundle state) {
+            return new MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(R.string.account_profile_title)
+                    .setMessage(R.string.account_profile_loading)
+                    .setNegativeButton(R.string.account_profile_close, null)
+                    .setNeutralButton(R.string.account_profile_retry, null)
+                    .create();
+        }
+
+        @Override
+        public void onStart() {
+            super.onStart();
+            AlertDialog dialog = (AlertDialog) requireDialog();
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> load(dialog));
+            load(dialog);
+        }
+
+        @Override
+        public void onStop() {
+            generation++;
+            ((AlertDialog) requireDialog()).setMessage(getText(R.string.account_profile_loading));
+            super.onStop();
+        }
+
+        private void load(AlertDialog dialog) {
+            int request = ++generation;
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setEnabled(false);
+            dialog.setMessage(getText(R.string.account_profile_loading));
+
+            String uid = activeUid();
+            if (uid == null) {
+                showError(dialog);
+                return;
+            }
+
+            String role = requireArguments().getString(ROLE);
+            AuthRepositories.get(requireContext()).getCurrentUser(new AuthRepository.Callback<User>() {
+                @Override
+                public void onSuccess(User user) {
+                    if (request != generation || !isAdded() || !dialog.isShowing()) return;
+                    if (user == null || !uid.equals(activeUid()) || !uid.equals(user.getUid())
+                            || role == null || !role.equals(user.getRole())) {
+                        showError(dialog);
+                        return;
+                    }
+                    int roleLabel = User.ROLE_MANAGER.equals(role) ? R.string.account_profile_manager
+                            : R.string.account_profile_resident;
+                    dialog.setMessage(getString(R.string.account_profile_details,
+                            valueOrDash(user.getDisplayName()), valueOrDash(user.getEmail()),
+                            getString(roleLabel)));
+                }
+
+                @Override
+                public void onError(String message) {
+                    if (request == generation && isAdded() && dialog.isShowing()) showError(dialog);
+                }
+            });
+        }
+
+        private void showError(AlertDialog dialog) {
+            dialog.setMessage(getText(R.string.account_profile_error));
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setEnabled(true);
+        }
+
+        private static String activeUid() {
+            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+            return user == null ? null : user.getUid();
+        }
+
+        private static String valueOrDash(String value) {
+            return value == null || value.trim().isEmpty() ? "—" : value;
+        }
     }
 }

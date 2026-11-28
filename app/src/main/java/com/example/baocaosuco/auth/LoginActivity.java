@@ -1,6 +1,7 @@
 package com.example.baocaosuco.auth;
 
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.util.Patterns;
 import android.view.View;
@@ -9,7 +10,9 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -23,7 +26,13 @@ public class LoginActivity extends AppCompatActivity {
 
     private EditText etEmail;
     private EditText etPassword;
-    private Button   btnLogin;
+    static final String SEND_VERIFICATION = "sendVerification";
+
+    private Button btnLogin;
+    private View formPanel;
+    private View verificationPanel;
+    private View progress;
+    private boolean loading;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,6 +52,17 @@ public class LoginActivity extends AppCompatActivity {
         etEmail    = findViewById(R.id.et_email);
         etPassword = findViewById(R.id.et_password);
         btnLogin   = findViewById(R.id.btn_action);
+        formPanel = findViewById(R.id.auth_credentials);
+        verificationPanel = findViewById(R.id.auth_verification_panel);
+        progress = findViewById(R.id.pb_login_loading);
+        initThemeAndBack(this, () -> loading);
+        findViewById(R.id.auth_check_verification).setOnClickListener(v -> updateVerification(false, true));
+        findViewById(R.id.auth_resend_verification).setOnClickListener(v -> updateVerification(true, false));
+        findViewById(R.id.auth_switch_account).setOnClickListener(v -> {
+            AuthRepositories.get(this).signOut();
+            etPassword.setText("");
+            showVerification(false);
+        });
 
         // UI Phuc gop dang nhap/dang ky: che phan chi dung cho dang ky va Google (chua co BE)
         findViewById(R.id.til_name).setVisibility(View.GONE);
@@ -58,6 +78,20 @@ public class LoginActivity extends AppCompatActivity {
         linkRegister.setOnClickListener(v -> {
             startActivity(new Intent(this, RegisterActivity.class));
         });
+        FirebaseAuthRepository repository = firebaseRepository();
+        if (repository != null && repository.hasSession()) {
+            boolean send = getIntent().getBooleanExtra(SEND_VERIFICATION, false);
+            getIntent().removeExtra(SEND_VERIFICATION);
+            if (send || savedInstanceState != null && savedInstanceState.getBoolean("emailVerificationPanel")) {
+                showVerification(true);
+            }
+            updateVerification(send, !send);
+        }
+    }
+
+    @Override protected void onSaveInstanceState(Bundle state) {
+        state.putBoolean("emailVerificationPanel", verificationPanel.getVisibility() == View.VISIBLE);
+        super.onSaveInstanceState(state);
     }
 
     private void attemptLogin() {
@@ -97,15 +131,81 @@ public class LoginActivity extends AppCompatActivity {
                 if (isFinishing() || isDestroyed()) return;
                 setLoading(false);
                 Toast.makeText(LoginActivity.this, message, Toast.LENGTH_LONG).show();
+                FirebaseAuthRepository repository = firebaseRepository();
+                if (repository != null && repository.hasSession()) updateVerification(false, false);
             }
         });
     }
 
-    /** Khoa / mo khoa nut trong khi dang xu ly. */
+    private FirebaseAuthRepository firebaseRepository() {
+        AuthRepository repository = AuthRepositories.get(this);
+        return repository instanceof FirebaseAuthRepository ? (FirebaseAuthRepository) repository : null;
+    }
+
+    private void updateVerification(boolean send, boolean continueAfterCheck) {
+        FirebaseAuthRepository repository = firebaseRepository();
+        if (loading || repository == null) return;
+        setLoading(true);
+        repository.verifyEmail(send, new AuthRepository.Callback<Boolean>() {
+            @Override public void onSuccess(Boolean pending) {
+                if (isFinishing() || isDestroyed()) return;
+                setLoading(false);
+                showVerification(pending);
+                if (pending && send) {
+                    Toast.makeText(LoginActivity.this, R.string.auth_verification_sent, Toast.LENGTH_LONG).show();
+                } else if (!pending && continueAfterCheck) {
+                    goToMain();
+                }
+            }
+
+            @Override public void onError(String message) {
+                if (isFinishing() || isDestroyed()) return;
+                setLoading(false);
+                Toast.makeText(LoginActivity.this, message, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void showVerification(boolean pending) {
+        formPanel.setVisibility(pending ? View.GONE : View.VISIBLE);
+        verificationPanel.setVisibility(pending ? View.VISIBLE : View.GONE);
+        findViewById(R.id.tv_switch_mode).setVisibility(pending ? View.GONE : View.VISIBLE);
+        ((TextView) findViewById(R.id.tv_form_title)).setText(
+                pending ? R.string.auth_verification_title : R.string.auth_title_login);
+        if (pending) etPassword.setText("");
+    }
+
     private void setLoading(boolean loading) {
-        btnLogin.setEnabled(!loading);
-        btnLogin.setText(loading ? getString(R.string.auth_loading)
-                                 : getString(R.string.auth_btn_login));
+        this.loading = loading;
+        setControlsEnabled(this, !loading, R.id.btn_action, R.id.tv_switch_mode, R.id.et_email,
+                R.id.et_password, R.id.btn_theme_toggle, R.id.auth_check_verification,
+                R.id.auth_resend_verification, R.id.auth_switch_account);
+        boolean verify = verificationPanel.getVisibility() == View.VISIBLE;
+        progress.setVisibility(loading && !verify ? View.VISIBLE : View.GONE);
+        findViewById(R.id.auth_verification_progress).setVisibility(
+                loading && verify ? View.VISIBLE : View.GONE);
+        btnLogin.setText(loading && !verify ? "" : getString(R.string.auth_btn_login));
+    }
+
+    static void setControlsEnabled(AppCompatActivity activity, boolean enabled, int... controls) {
+        for (int id : controls) activity.findViewById(id).setEnabled(enabled);
+    }
+
+    static void initThemeAndBack(AppCompatActivity activity, java.util.function.BooleanSupplier busy) {
+        activity.findViewById(R.id.btn_theme_toggle).setOnClickListener(v -> {
+            int night = activity.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+            AppCompatDelegate.setDefaultNightMode(night == Configuration.UI_MODE_NIGHT_YES
+                    ? AppCompatDelegate.MODE_NIGHT_NO : AppCompatDelegate.MODE_NIGHT_YES);
+        });
+        activity.getOnBackPressedDispatcher().addCallback(activity, new OnBackPressedCallback(true) {
+            @Override public void handleOnBackPressed() {
+                if (!busy.getAsBoolean()) {
+                    setEnabled(false);
+                    try { activity.getOnBackPressedDispatcher().onBackPressed(); }
+                    finally { setEnabled(true); }
+                }
+            }
+        });
     }
 
     /** Sang MainActivity de no tu dieu huong theo role. */
