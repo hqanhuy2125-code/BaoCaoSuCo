@@ -49,6 +49,7 @@ public final class ResidentForegroundStatusRefresh {
 
     private Map<String, IncidentSnapshot> previous = Collections.emptyMap();
     private boolean hasPage;
+    private boolean hasError;
     private boolean visible;
     private boolean closed;
     private boolean inFlight;
@@ -72,6 +73,7 @@ public final class ResidentForegroundStatusRefresh {
         visible = true;
         generation++;
         hasPage = false;
+        hasError = false;
         previous = Collections.emptyMap();
         refresh();
         scheduleNext();
@@ -105,14 +107,14 @@ public final class ResidentForegroundStatusRefresh {
                 if (!accept(epoch)) return;
                 inFlight = false;
                 if (incidents == null) {
-                    view.onError(IncidentRepository.Error.UNKNOWN);
+                    reportError(IncidentRepository.Error.UNKNOWN);
                     return;
                 }
                 List<IncidentSnapshot> page = new ArrayList<>(incidents);
                 Map<String, IncidentSnapshot> latest = new HashMap<>();
                 for (IncidentSnapshot item : page) {
                     if (item == null || latest.put(item.getId(), item) != null) {
-                        view.onError(IncidentRepository.Error.SECURITY_NOT_READY);
+                        reportError(IncidentRepository.Error.SECURITY_NOT_READY);
                         return;
                     }
                 }
@@ -126,7 +128,7 @@ public final class ResidentForegroundStatusRefresh {
                         if (item.getRevision() < older.getRevision() ||
                                 (item.getRevision() == older.getRevision() &&
                                 !item.getStatusCode().equals(older.getStatusCode()))) {
-                            view.onError(IncidentRepository.Error.CONFLICT);
+                            reportError(IncidentRepository.Error.CONFLICT);
                             return;
                         }
                         if (item.getRevision() > older.getRevision() &&
@@ -137,13 +139,14 @@ public final class ResidentForegroundStatusRefresh {
                 }
                 // Publish fresh authoritative page first, then status notices.
                 // Do not silently notify on the first load or on unchanged polls.
-                if (!hasPage || !samePage(previous, latest)) {
+                if (!hasPage || hasError || !samePage(previous, latest)) {
                     view.onPage(Collections.unmodifiableList(page));
                     // A View callback may navigate away or sign out synchronously.
                     if (!accept(epoch)) return;
                 }
                 previous = latest;
                 hasPage = true;
+                hasError = false;
                 for (IncidentSnapshot item : changed) {
                     if (!accept(epoch)) return;
                     view.onStatusChanged(item);
@@ -162,10 +165,15 @@ public final class ResidentForegroundStatusRefresh {
                     onStop();
                     view.onPage(Collections.emptyList());
                 }
-                view.onError(safeError);
+                reportError(safeError);
             }
         });
         return true;
+    }
+
+    private void reportError(IncidentRepository.Error error) {
+        hasError = true;
+        view.onError(error);
     }
 
     private boolean accept(int epoch) {
