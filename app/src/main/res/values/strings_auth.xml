@@ -41,4 +41,17 @@
     <!-- Man hinh quan ly -->
     <string name="manager_main_title">Quản lý</string>
     <string name="manager_main_greeting">Xin chào, %1$s</string>
+    <!-- Zero until the actual approved rollout instant is recorded. Use epoch milliseconds. -->
+    <!-- D07: Firebase account creation at or after 2026-11-28T10:20:00Z requires Resident email verification. -->
+    <string name="auth_verification_cutoff_millis" translatable="false">1795861200000</string>
+    <string name="auth_verification_title">Xác minh email</string>
+    <string name="auth_verification_required">Mở liên kết xác minh trong email rồi quay lại kiểm tra.</string>
+    <string name="auth_verification_check">Tôi đã xác minh email</string>
+    <string name="auth_verification_resend">Gửi lại email xác minh</string>
+    <string name="auth_verification_switch">Dùng tài khoản khác</string>
+    <string name="auth_verification_sent">Đã gửi email xác minh.</string>
+    <string name="auth_verification_sign_in">Phiên đăng nhập đã thay đổi. Vui lòng đăng nhập lại.</string>
+    <string name="auth_verification_send_failed">Chưa gửi được email. Hãy thử gửi lại.</string>
+    <string name="auth_verification_refresh_failed">Chưa kiểm tra được xác minh. Hãy thử lại.</string>
+    <string name="auth_verification_not_configured">Đăng ký tạm thời chưa mở. Vui lòng thử lại sau.</string>
 </resources>

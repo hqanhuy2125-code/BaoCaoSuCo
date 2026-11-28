@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.example.baocaosuco.R;
 import com.example.baocaosuco.data.model.User;
 import com.google.firebase.FirebaseNetworkException;
 import com.google.firebase.Timestamp;
@@ -13,14 +14,17 @@ import com.google.firebase.auth.FirebaseAuthInvalidUserException;
 import com.google.firebase.auth.FirebaseAuthUserCollisionException;
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.FirebaseUserMetadata;
 import com.google.firebase.auth.UserProfileChangeRequest;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.Source;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Locale;
 
 /**
  * Trien khai thuc te cua AuthRepository su dung Firebase Authentication va Cloud Firestore.
@@ -35,13 +39,23 @@ public class FirebaseAuthRepository implements AuthRepository {
     private final FirebaseAuth firebaseAuth;
     private final FirebaseFirestore firestore;
     private final Handler mainHandler;
+    private final Context context;
+    private final long cutoffMillis;
 
     public FirebaseAuthRepository(Context context) {
-        this(FirebaseAuth.getInstance(), FirebaseFirestore.getInstance());
+        this(context.getApplicationContext(), FirebaseAuth.getInstance(), FirebaseFirestore.getInstance(),
+                Long.parseLong(context.getString(R.string.auth_verification_cutoff_millis)));
     }
 
     /** Constructor ho tro inject mock / test instance. */
     public FirebaseAuthRepository(FirebaseAuth auth, FirebaseFirestore firestore) {
+        this(null, auth, firestore, 0);
+    }
+
+    private FirebaseAuthRepository(Context context, FirebaseAuth auth, FirebaseFirestore firestore,
+                                   long cutoffMillis) {
+        this.context = context;
+        this.cutoffMillis = cutoffMillis;
         this.firebaseAuth = auth;
         this.firestore = firestore;
         this.mainHandler = new Handler(Looper.getMainLooper());
@@ -49,7 +63,11 @@ public class FirebaseAuthRepository implements AuthRepository {
 
     @Override
     public void register(String displayName, String email, String password, Callback<User> callback) {
-        String normalizedEmail = email != null ? email.trim().toLowerCase() : "";
+        if (context != null && !registrationOpen(cutoffMillis, System.currentTimeMillis())) {
+            postError(callback, text(R.string.auth_verification_not_configured));
+            return;
+        }
+        String normalizedEmail = email != null ? email.trim().toLowerCase(Locale.ROOT) : "";
         String safeName = displayName != null ? displayName.trim() : "";
 
         firebaseAuth.createUserWithEmailAndPassword(normalizedEmail, password)
@@ -66,6 +84,16 @@ public class FirebaseAuthRepository implements AuthRepository {
                     }
 
                     String uid = firebaseUser.getUid();
+                    FirebaseUserMetadata metadata = firebaseUser.getMetadata();
+                    if (context != null && (metadata == null
+                            || !registrationOpen(cutoffMillis, metadata.getCreationTimestamp()))) {
+                        // No profile exists yet. The SDK/server creation time defines the cutover.
+                        firebaseUser.delete().addOnCompleteListener(ignored -> {
+                            signOutIfCurrent(uid);
+                            postError(callback, text(R.string.auth_verification_not_configured));
+                        });
+                        return;
+                    }
 
                     // Dong bo displayName len Auth profile
                     if (!safeName.isEmpty()) {
@@ -94,7 +122,7 @@ public class FirebaseAuthRepository implements AuthRepository {
                                 // Ghi Firestore that bai: xu ly callback don dep an toan de tranh tai khoan Auth "mo coi"
                                 String firestoreErrorMsg = getFirestoreErrorMessage(e, "Lỗi tạo hồ sơ người dùng trên Firestore");
                                 firebaseUser.delete().addOnCompleteListener(deleteTask -> {
-                                    firebaseAuth.signOut();
+                                    signOutIfCurrent(uid);
                                     if (!deleteTask.isSuccessful()) {
                                         postError(callback, firestoreErrorMsg + " (Không thể hủy phiên Auth: " + 
                                                 (deleteTask.getException() != null ? deleteTask.getException().getMessage() : "lỗi không rõ") + ")");
@@ -108,7 +136,7 @@ public class FirebaseAuthRepository implements AuthRepository {
 
     @Override
     public void signIn(String email, String password, Callback<User> callback) {
-        String normalizedEmail = email != null ? email.trim().toLowerCase() : "";
+        String normalizedEmail = email != null ? email.trim().toLowerCase(Locale.ROOT) : "";
 
         firebaseAuth.signInWithEmailAndPassword(normalizedEmail, password)
                 .addOnCompleteListener(task -> {
@@ -123,24 +151,7 @@ public class FirebaseAuthRepository implements AuthRepository {
                         return;
                     }
 
-                    // Doc ho so tu Cloud Firestore de lay role va thong tin
-                    firestore.collection(COLLECTION_USERS)
-                            .document(firebaseUser.getUid())
-                            .get()
-                            .addOnSuccessListener(documentSnapshot -> {
-                                User user = parseUserDocument(firebaseUser, documentSnapshot);
-                                if (user == null) {
-                                    // Ho so thieu hoac vai tro khong hop le -> dang xuat an toan
-                                    firebaseAuth.signOut();
-                                    postError(callback, "Hồ sơ người dùng không tồn tại hoặc vai trò không hợp lệ trên Firestore.");
-                                    return;
-                                }
-                                postSuccess(callback, user);
-                            })
-                            .addOnFailureListener(e -> {
-                                firebaseAuth.signOut();
-                                postError(callback, getFirestoreErrorMessage(e, "Không thể tải hồ sơ người dùng từ Firestore"));
-                            });
+                    readProfile(firebaseUser, false, true, callback);
                 });
     }
 
@@ -151,24 +162,123 @@ public class FirebaseAuthRepository implements AuthRepository {
             postSuccess(callback, null);
             return;
         }
+        readProfile(firebaseUser, false, false, callback);
+    }
 
-        firestore.collection(COLLECTION_USERS)
-                .document(firebaseUser.getUid())
-                .get()
+    boolean hasSession() {
+        return firebaseAuth.getCurrentUser() != null;
+    }
+
+    /** Only a session with a server-read own Resident profile can send another email. */
+    void verifyEmail(boolean send, Callback<Boolean> callback) {
+        FirebaseUser current = firebaseAuth.getCurrentUser();
+        if (current == null) {
+            postError(callback, text(R.string.auth_verification_sign_in));
+            return;
+        }
+        readProfile(current, true, false, new Callback<User>() {
+            @Override public void onSuccess(User profile) {
+                if (!isCurrent(current.getUid())) {
+                    postError(callback, text(R.string.auth_verification_sign_in));
+                    return;
+                }
+                if (!requiresVerification(profile, current)) {
+                    postSuccess(callback, false);
+                    return;
+                }
+                // Refresh after opening the email link on this or another device.
+                current.reload().addOnCompleteListener(reload -> {
+                    if (!isCurrent(current.getUid())) {
+                        postError(callback, text(R.string.auth_verification_sign_in));
+                    } else if (!reload.isSuccessful()) {
+                        postError(callback, getAuthErrorMessage(reload.getException(),
+                                text(R.string.auth_verification_refresh_failed)));
+                    } else if (!requiresVerification(profile, firebaseAuth.getCurrentUser())) {
+                        postSuccess(callback, false);
+                    } else if (send) {
+                        current.sendEmailVerification().addOnCompleteListener(sent -> {
+                            if (!isCurrent(current.getUid())) {
+                                postError(callback, text(R.string.auth_verification_sign_in));
+                            } else if (sent.isSuccessful()) {
+                                postSuccess(callback, true);
+                            } else {
+                                postError(callback, getAuthErrorMessage(sent.getException(),
+                                        text(R.string.auth_verification_send_failed)));
+                            }
+                        });
+                    } else {
+                        postSuccess(callback, true);
+                    }
+                });
+            }
+
+            @Override public void onError(String message) { postError(callback, message); }
+        });
+    }
+
+    private void readProfile(FirebaseUser authenticated, boolean allowPending, boolean signingIn,
+                             Callback<User> callback) {
+        String uid = authenticated.getUid();
+        firestore.collection(COLLECTION_USERS).document(uid).get(Source.SERVER)
                 .addOnSuccessListener(documentSnapshot -> {
-                    User user = parseUserDocument(firebaseUser, documentSnapshot);
-                    if (user == null) {
-                        // Phien co tren Auth nhung ho so Firestore bi thieu hoac sai role -> huy phien
-                        firebaseAuth.signOut();
-                        postSuccess(callback, null);
+                    if (!isCurrent(uid)) {
+                        postError(callback, text(R.string.auth_verification_sign_in));
                         return;
                     }
-                    postSuccess(callback, user);
-                })
-                .addOnFailureListener(e -> {
-                    // Loi mang hoac quyen truy cap Firestore khi kiem tra phien
-                    postError(callback, getFirestoreErrorMessage(e, "Không thể kiểm tra phiên đăng nhập từ Firestore"));
+                    FirebaseUser current = firebaseAuth.getCurrentUser();
+                    User profile = parseUserDocument(current, documentSnapshot);
+                    if (profile == null) {
+                        signOutIfCurrent(uid);
+                        if (signingIn || allowPending) {
+                            postError(callback, "Hồ sơ người dùng không tồn tại hoặc vai trò không hợp lệ.");
+                        } else {
+                            postSuccess(callback, null);
+                        }
+                    } else if (!allowPending && requiresVerification(profile, current)) {
+                        // Preserve the owning Auth session for resend/reload on the login screen.
+                        if (signingIn) {
+                            postError(callback, text(R.string.auth_verification_required));
+                        } else {
+                            postSuccess(callback, null);
+                        }
+                    } else {
+                        postSuccess(callback, profile);
+                    }
+                }).addOnFailureListener(e -> {
+                    if (signingIn) signOutIfCurrent(uid);
+                    postError(callback, getFirestoreErrorMessage(e,
+                            "Không thể tải hồ sơ người dùng từ Firestore"));
                 });
+    }
+
+    private boolean requiresVerification(User profile, FirebaseUser current) {
+        FirebaseUserMetadata metadata = current.getMetadata();
+        return requiresVerification(profile.getRole(), cutoffMillis,
+                metadata == null ? 0 : metadata.getCreationTimestamp(), current.isEmailVerified());
+    }
+
+    static boolean requiresVerification(String role, long cutoffMillis, long creationMillis,
+                                        boolean verified) {
+        return User.ROLE_RESIDENT.equals(role) && !verified && cutoffMillis > 0
+                && (creationMillis <= 0 || creationMillis >= cutoffMillis);
+    }
+
+    static boolean registrationOpen(long cutoffMillis, long nowMillis) {
+        return cutoffMillis > 0 && nowMillis >= cutoffMillis;
+    }
+
+    private String text(int resource) {
+        // Test constructor retains the historical unconfigured adapter for existing smoke fixtures.
+        return context == null ? "Không thể xác minh phiên đăng nhập." : context.getString(resource);
+    }
+
+    private boolean isCurrent(String uid) {
+        FirebaseUser current = firebaseAuth.getCurrentUser();
+        return current != null && uid.equals(current.getUid());
+    }
+
+    private void signOutIfCurrent(String uid) {
+        if (isCurrent(uid)) firebaseAuth.signOut();
     }
 
     @Override

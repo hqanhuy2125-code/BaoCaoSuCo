@@ -85,7 +85,7 @@ public class ResidentDetailActivity extends AppCompatActivity implements Residen
 
         btnConfirmNotDone.setOnClickListener(v -> {
             if (!busy && !needsReload && currentIncident != null) {
-                coordinator.confirm(currentIncident, false);
+                showUnresolvedDialog(currentIncident);
             }
         });
 
@@ -146,6 +146,30 @@ public class ResidentDetailActivity extends AppCompatActivity implements Residen
         cardResidentConfirm.setVisibility(incident.getStatus() == IncidentStatus.COMPLETED
                 ? View.VISIBLE : View.GONE);
         setActionsEnabled(!busy);
+    }
+
+    private void showUnresolvedDialog(IncidentSnapshot observed) {
+        android.widget.EditText note = new android.widget.EditText(this);
+        note.setHint("Ghi chú (không bắt buộc)");
+        androidx.appcompat.app.AlertDialog dialog = new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle("Báo sự cố chưa được giải quyết")
+                .setView(note)
+                .setNegativeButton("Hủy", null)
+                .setPositiveButton("Gửi", null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE)
+                .setOnClickListener(view -> {
+                    String value = note.getText().toString().trim();
+                    if (value.codePointCount(0, value.length()) > 500) {
+                        note.setError("Ghi chú tối đa 500 ký tự");
+                        return;
+                    }
+                    if (!busy && !needsReload && currentIncident == observed
+                            && coordinator.confirm(observed, false, value.isEmpty() ? null : value)) {
+                        dialog.dismiss();
+                    }
+                }));
+        dialog.show();
     }
 
     private void setActionsEnabled(boolean enabled) {

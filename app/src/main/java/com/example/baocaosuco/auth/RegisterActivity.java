@@ -11,7 +11,6 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.example.baocaosuco.MainActivity;
 import com.example.baocaosuco.R;
 import com.example.baocaosuco.data.model.User;
 
@@ -20,12 +19,14 @@ public class RegisterActivity extends AppCompatActivity {
     private EditText etName;
     private EditText etEmail;
     private EditText etPassword;
-    private Button   btnRegister;
+    private Button btnRegister;
+    private boolean loading;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+        LoginActivity.initThemeAndBack(this, () -> loading);
 
         etName     = findViewById(R.id.et_name);
         etEmail    = findViewById(R.id.et_email);
@@ -80,8 +81,7 @@ public class RegisterActivity extends AppCompatActivity {
             public void onSuccess(User user) {
                 if (isFinishing() || isDestroyed()) return;
                 setLoading(false);
-                Toast.makeText(RegisterActivity.this, getString(R.string.auth_register_success), Toast.LENGTH_SHORT).show();
-                goToMain();
+                goToVerification();
             }
 
             @Override
@@ -94,13 +94,16 @@ public class RegisterActivity extends AppCompatActivity {
     }
 
     private void setLoading(boolean loading) {
-        btnRegister.setEnabled(!loading);
-        btnRegister.setText(loading ? getString(R.string.auth_loading)
-                                    : getString(R.string.auth_btn_register));
+        this.loading = loading;
+        LoginActivity.setControlsEnabled(this, !loading, R.id.btn_action, R.id.tv_switch_mode,
+                R.id.et_name, R.id.et_email, R.id.et_password, R.id.btn_theme_toggle);
+        findViewById(R.id.pb_login_loading).setVisibility(loading ? View.VISIBLE : View.GONE);
+        btnRegister.setText(loading ? "" : getString(R.string.auth_btn_register));
     }
 
-    private void goToMain() {
-        Intent intent = new Intent(this, MainActivity.class);
+    private void goToVerification() {
+        Intent intent = new Intent(this, LoginActivity.class);
+        intent.putExtra(LoginActivity.SEND_VERIFICATION, true);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();

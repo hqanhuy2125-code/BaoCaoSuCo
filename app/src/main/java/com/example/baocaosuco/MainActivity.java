@@ -53,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onError(String message) {
                 if (isFinishing() || isDestroyed()) return;
-                // Loi khong xac dinh: ve man Dang nhap cho an toan
+                Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
                 goTo(LoginActivity.class, null);
             }
         });

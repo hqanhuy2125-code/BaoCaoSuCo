@@ -20,19 +20,22 @@ import java.util.List;
 public class ResidentListFragment extends Fragment implements ResidentForegroundStatusRefresh.View {
     private ResidentForegroundStatusRefresh refresh;
     private IncidentListUi ui;
+    private IncidentListUi.PageLoader pages;
     private Snackbar statusNotice;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle state) {
         View view = inflater.inflate(R.layout.fragment_resident_list, container, false);
-        refresh = new ResidentForegroundStatusRefresh(new FirebaseIncidentRepository().resident(),
+        FirebaseIncidentRepository repository = new FirebaseIncidentRepository();
+        refresh = new ResidentForegroundStatusRefresh(repository.resident(),
                 new AndroidResidentRefreshScheduler(), this);
         ui = new IncidentListUi(view, false, this::retry, incident -> {
             Intent intent = new Intent(requireContext(), ResidentDetailActivity.class);
             intent.putExtra("incident_id", incident.getId());
             startActivity(intent);
         });
+        pages = ui.bindPaging(repository.residentPages());
         view.findViewById(R.id.btn_empty_create).setOnClickListener(
                 v -> ((ResidentMainActivity) requireActivity()).switchToCreateIncident());
         return view;
@@ -41,13 +44,14 @@ public class ResidentListFragment extends Fragment implements ResidentForeground
     @Override
     public void onResume() {
         super.onResume();
-        ui.busy(true);
+        pages.restart();
         refresh.onStart();
     }
 
     @Override
     public void onPause() {
         refresh.onStop();
+        pages.clear();
         dismissStatusNotice();
         super.onPause();
     }
@@ -56,19 +60,20 @@ public class ResidentListFragment extends Fragment implements ResidentForeground
     public void onDestroyView() {
         refresh.close();
         refresh = null;
+        pages.clear();
+        pages = null;
         ui = null;
         super.onDestroyView();
     }
 
     private void retry() {
-        ui.busy(true);
+        pages.restart();
         if (!refresh.refresh()) refresh.onStart();
     }
 
     @Override
     public void onPage(List<IncidentSnapshot> rows) {
-        ui.busy(false);
-        ui.showRows(rows);
+        pages.reconcileHead(rows);
     }
 
     @Override
@@ -83,8 +88,12 @@ public class ResidentListFragment extends Fragment implements ResidentForeground
     @Override
     public void onError(IncidentRepository.Error error) {
         dismissStatusNotice();
-        ui.busy(false);
-        ui.showError(error);
+        if (error == IncidentRepository.Error.AUTH_REQUIRED
+                || error == IncidentRepository.Error.PERMISSION_DENIED) {
+            pages.clear();
+            ui.busy(false);
+            ui.showError(error);
+        }
     }
 
     private void dismissStatusNotice() {

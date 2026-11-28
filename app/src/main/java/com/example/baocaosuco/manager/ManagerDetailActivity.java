@@ -74,9 +74,9 @@ public class ManagerDetailActivity extends AppCompatActivity implements ManagerI
         btnComplete.setOnClickListener(v -> {
             if (canAct()) coordinator.complete(currentIncident);
         });
-        retry.setOnClickListener(v -> coordinator.loadList());
+        retry.setOnClickListener(v -> coordinator.loadDetail(incidentId));
         if (incidentId == null) onError(IncidentRepository.Error.NOT_FOUND);
-        else coordinator.loadList(); // Resolve the ID against a newly loaded Manager page.
+        else coordinator.loadDetail(incidentId);
     }
 
     private boolean canAct() {
@@ -135,11 +135,7 @@ public class ManagerDetailActivity extends AppCompatActivity implements ManagerI
     }
 
     @Override
-    public void onRows(List<IncidentSnapshot> rows) {
-        if (incidentId != null) {
-            coordinator.select(incidentId);
-        }
-    }
+    public void onRows(List<IncidentSnapshot> rows) {}
 
     @Override
     public void onDetail(IncidentSnapshot selected) {

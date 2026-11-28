@@ -93,110 +93,157 @@
                     android:textStyle="bold" />
 
                 <!-- Registration specific fields -->
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/til_name"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                <LinearLayout
+                    android:id="@+id/auth_credentials"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:visibility="gone"
-                    app:hintTextColor="@color/pink_primary"
-                    app:boxStrokeColor="@color/pink_primary">
+                    android:orientation="vertical">
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_name"
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/til_name"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/full_name_hint"
-                        android:inputType="textPersonName"
-                        android:textSize="14sp" />
-                </com.google.android.material.textfield.TextInputLayout>
+                        android:layout_marginTop="16dp"
+                        android:visibility="gone"
+                        app:hintTextColor="@color/pink_primary"
+                        app:boxStrokeColor="@color/pink_primary">
 
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/til_room"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:visibility="gone"
-                    app:hintTextColor="@color/pink_primary"
-                    app:boxStrokeColor="@color/pink_primary">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_name"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="@string/full_name_hint"
+                            android:inputType="textPersonName"
+                            android:textSize="14sp" />
+                    </com.google.android.material.textfield.TextInputLayout>
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_room"
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/til_room"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/room_number_hint"
-                        android:inputType="text"
-                        android:textSize="14sp" />
-                </com.google.android.material.textfield.TextInputLayout>
+                        android:layout_marginTop="10dp"
+                        android:visibility="gone"
+                        app:hintTextColor="@color/pink_primary"
+                        app:boxStrokeColor="@color/pink_primary">
 
-                <!-- Email Input with Real-time error prompting -->
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/til_email"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    app:errorEnabled="true"
-                    app:hintTextColor="@color/pink_primary"
-                    app:boxStrokeColor="@color/pink_primary">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_room"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="@string/room_number_hint"
+                            android:inputType="text"
+                            android:textSize="14sp" />
+                    </com.google.android.material.textfield.TextInputLayout>
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_email"
+                    <!-- Email Input with Real-time error prompting -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/til_email"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/email_hint"
-                        android:inputType="textEmailAddress"
-                        android:textSize="14sp" />
-                </com.google.android.material.textfield.TextInputLayout>
+                        android:layout_marginTop="16dp"
+                        app:errorEnabled="true"
+                        app:hintTextColor="@color/pink_primary"
+                        app:boxStrokeColor="@color/pink_primary">
 
-                <!-- Password Input -->
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/til_password"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:errorEnabled="true"
-                    app:passwordToggleEnabled="true"
-                    app:hintTextColor="@color/pink_primary"
-                    app:boxStrokeColor="@color/pink_primary">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_email"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="@string/email_hint"
+                            android:inputType="textEmailAddress"
+                            android:textSize="14sp" />
+                    </com.google.android.material.textfield.TextInputLayout>
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_password"
+                    <!-- Password Input -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/til_password"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/password_hint"
-                        android:inputType="textPassword"
-                        android:textSize="14sp" />
-                </com.google.android.material.textfield.TextInputLayout>
+                        app:errorEnabled="true"
+                        app:passwordToggleEnabled="true"
+                        app:hintTextColor="@color/pink_primary"
+                        app:boxStrokeColor="@color/pink_primary">
 
-                <!-- Main Action Button with Progress Bar -->
-                <RelativeLayout
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_password"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="@string/password_hint"
+                            android:inputType="textPassword"
+                            android:textSize="14sp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Main Action Button with Progress Bar -->
+                    <RelativeLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_action"
+                            android:layout_width="match_parent"
+                            android:layout_height="52dp"
+                            android:background="@drawable/bg_button_primary"
+                            android:text="@string/btn_login"
+                            android:textColor="@color/white"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            app:backgroundTint="@null"
+                            app:cornerRadius="12dp" />
+
+                        <ProgressBar
+                            android:id="@+id/pb_login_loading"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:layout_centerInParent="true"
+                            android:indeterminateTint="@color/white"
+                            android:visibility="gone" />
+                    </RelativeLayout>
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/auth_verification_panel"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp">
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/auth_verification_required" />
 
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_action"
+                        android:id="@+id/auth_check_verification"
                         android:layout_width="match_parent"
-                        android:layout_height="52dp"
-                        android:background="@drawable/bg_button_primary"
-                        android:text="@string/btn_login"
-                        android:textColor="@color/white"
-                        android:textSize="15sp"
-                        android:textStyle="bold"
-                        app:backgroundTint="@null"
-                        app:cornerRadius="12dp" />
+                        android:layout_height="wrap_content"
+                        android:text="@string/auth_verification_check" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/auth_resend_verification"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/auth_verification_resend" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/auth_switch_account"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/auth_verification_switch" />
 
                     <ProgressBar
-                        android:id="@+id/pb_login_loading"
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:layout_centerInParent="true"
-                        android:indeterminateTint="@color/white"
+                        android:id="@+id/auth_verification_progress"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_horizontal"
                         android:visibility="gone" />
-                </RelativeLayout>
+                </LinearLayout>
 
                 <!-- Switch Mode Text -->
                 <TextView
@@ -210,39 +257,6 @@
                     android:textColor="@color/blue_primary"
                     android:textSize="13sp"
                     android:textStyle="bold" />
-
-                <!-- Divider -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:layout_marginBottom="14dp"
-                    android:gravity="center"
-                    android:orientation="horizontal">
-
-                    <View
-                        android:layout_width="0dp"
-                        android:layout_height="1dp"
-                        android:layout_weight="1"
-                        android:background="?attr/colorOnSurfaceVariant"
-                        android:alpha="0.3" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
-                        android:layout_marginEnd="12dp"
-                        android:text="@string/or_divider"
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textSize="12sp" />
-
-                    <View
-                        android:layout_width="0dp"
-                        android:layout_height="1dp"
-                        android:layout_weight="1"
-                        android:background="?attr/colorOnSurfaceVariant"
-                        android:alpha="0.3" />
-                </LinearLayout>
 
                 <!-- Google Integration Button -->
                 <com.google.android.material.button.MaterialButton

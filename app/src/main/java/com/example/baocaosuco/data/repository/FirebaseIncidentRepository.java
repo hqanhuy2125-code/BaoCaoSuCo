@@ -3,6 +3,7 @@ package com.example.baocaosuco.data.repository;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.example.baocaosuco.data.incident.HistoryAction;
 import com.example.baocaosuco.data.incident.IncidentHistorySnapshot;
 import com.example.baocaosuco.data.incident.IncidentSnapshot;
 import com.example.baocaosuco.data.incident.NewIncidentInput;
@@ -97,6 +98,67 @@ public final class FirebaseIncidentRepository {
                 .addOnFailureListener(e -> error(callback, firebaseError(e)));
     }
 
+    public IncidentRepository.PageSource residentPages() {
+        return (after, callback) -> withActor(ActorRole.RESIDENT, callback,
+                actor -> loadPage(actor, true, after, callback));
+    }
+
+    public IncidentRepository.PageSource managerPages() {
+        return (after, callback) -> withActor(ActorRole.MANAGER, callback,
+                actor -> loadPage(actor, false, after, callback));
+    }
+
+    private final class IncidentCursor implements IncidentRepository.PageCursor {
+        final FirebaseIncidentRepository repository = FirebaseIncidentRepository.this;
+        final String uid;
+        final boolean mine;
+        final DocumentSnapshot last;
+
+        IncidentCursor(Actor actor, boolean mine, DocumentSnapshot last) {
+            this.uid = actor.uid;
+            this.mine = mine;
+            this.last = last;
+        }
+    }
+
+    private void loadPage(Actor actor, boolean mine, IncidentRepository.PageCursor after,
+                          IncidentRepository.Callback<IncidentRepository.Page> callback) {
+        int limit = mine ? 20 : 50;
+        Query query = incidents().orderBy("createdAt", Query.Direction.DESCENDING).limit(limit);
+        if (mine) query = query.whereEqualTo("residentId", actor.uid);
+        if (after != null) {
+            if (!(after instanceof IncidentCursor)) {
+                error(callback, IncidentRepository.Error.VALIDATION);
+                return;
+            }
+            IncidentCursor cursor = (IncidentCursor) after;
+            if (cursor.repository != this || cursor.mine != mine || !actor.uid.equals(cursor.uid)) {
+                error(callback, IncidentRepository.Error.PERMISSION_DENIED);
+                return;
+            }
+            // A snapshot cursor includes Firestore's document ID tie-breaker at equal createdAt.
+            query = query.startAfter(cursor.last);
+        }
+        query.get(Source.SERVER).addOnSuccessListener(snapshot -> {
+            try {
+                List<IncidentSnapshot> rows = new ArrayList<>();
+                List<DocumentSnapshot> documents = snapshot.getDocuments();
+                for (DocumentSnapshot doc : documents) {
+                    IncidentSnapshot row = decode(doc);
+                    if (mine && !actor.uid.equals(row.getResidentId())) {
+                        throw new Reject(IncidentRepository.Error.PERMISSION_DENIED);
+                    }
+                    rows.add(row);
+                }
+                IncidentRepository.PageCursor next = documents.size() < limit ? null
+                        : new IncidentCursor(actor, mine, documents.get(documents.size() - 1));
+                successForActor(actor, callback, new IncidentRepository.Page(rows, next));
+            } catch (Reject invalid) {
+                error(callback, invalid.error);
+            }
+        }).addOnFailureListener(e -> error(callback, firebaseError(e)));
+    }
+
     private boolean sameAuth(String uid) {
         FirebaseUser current = auth.getCurrentUser();
         return current != null && uid.equals(current.getUid());
@@ -183,14 +245,14 @@ public final class FirebaseIncidentRepository {
     }
 
     private static Map<String, Object> event(String action, String fromStatus, String toStatus,
-                                              String uid, int revision) {
+                                              String uid, int revision, String note) {
         Map<String, Object> values = new HashMap<>();
         values.put("action", action);
         values.put("fromStatus", fromStatus);
         values.put("toStatus", toStatus);
         values.put("actorId", uid);
         values.put("revision", revision);
-        values.put("note", null);
+        values.put("note", note);
         values.put("createdAt", FieldValue.serverTimestamp());
         return values;
     }
@@ -199,11 +261,11 @@ public final class FirebaseIncidentRepository {
         values.put(name, data);
     }
 
-    private void createIncident(Actor actor, NewIncidentInput input,
+    private void createIncident(Actor actor, NewIncidentInput input, String attemptId,
                                 IncidentRepository.Callback<IncidentSnapshot> callback) {
         if (!sameAuth(actor.uid)) { error(callback, IncidentRepository.Error.AUTH_REQUIRED); return; }
-        DocumentReference incident = incidents().document();
-        String eventId = UUID.randomUUID().toString();
+        DocumentReference incident = root(attemptId);
+        String eventId = attemptId;
         Map<String, Object> data = new HashMap<>();
         put(data, "residentId", actor.uid);
         put(data, "title", input.getTitle());
@@ -219,9 +281,68 @@ public final class FirebaseIncidentRepository {
         WriteBatch batch = firestore.batch();
         batch.set(incident, data);
         batch.set(incident.collection(HISTORY).document(eventId),
-                event("CREATE", null, "NEW", actor.uid, 0));
-        batch.commit().addOnSuccessListener(ignored -> readAfterCommit(actor, incident, callback))
-                .addOnFailureListener(e -> error(callback, firebaseError(e)));
+                event("CREATE", null, "NEW", actor.uid, 0, null));
+        // Rules allow this pair only on creation. A replay uses the same two document IDs.
+        batch.commit().addOnSuccessListener(ignored -> reconcileCreate(actor, attemptId, input,
+                        IncidentRepository.Error.NETWORK, callback))
+                .addOnFailureListener(e -> reconcileCreate(actor, attemptId, input, firebaseError(e), callback));
+    }
+
+    private void reconcileCreate(Actor actor, String attemptId, NewIncidentInput input,
+                                 IncidentRepository.Error fallback,
+                                 IncidentRepository.Callback<IncidentSnapshot> callback) {
+        DocumentReference incident = root(attemptId);
+        incident.get(Source.SERVER).addOnSuccessListener(document -> {
+            final IncidentSnapshot saved;
+            try {
+                if (!document.exists()) {
+                    error(callback, fallback);
+                    return;
+                }
+                saved = decode(document);
+                if (!saved.getResidentId().equals(actor.uid)) {
+                    error(callback, IncidentRepository.Error.PERMISSION_DENIED);
+                    return;
+                }
+                if (input != null && (!input.getTitle().equals(saved.getTitle())
+                        || !input.getDescription().equals(saved.getDescription())
+                        || !input.getLocation().equals(saved.getLocation())
+                        || !input.getPriority().equals(saved.getPriority()))) {
+                    error(callback, IncidentRepository.Error.CONFLICT);
+                    return;
+                }
+            } catch (Reject rejected) {
+                error(callback, rejected.error);
+                return;
+            }
+            incident.collection(HISTORY).document(attemptId).get(Source.SERVER)
+                    .addOnSuccessListener(documentEvent -> {
+                        try {
+                            if (!documentEvent.exists()) throw new Reject(IncidentRepository.Error.CONFLICT);
+                            IncidentHistorySnapshot created = decodeHistory(attemptId, documentEvent);
+                            if (created.getAction() != HistoryAction.CREATE || created.getRevision() != 0
+                                    || !actor.uid.equals(created.getActorId())) {
+                                throw new Reject(IncidentRepository.Error.CONFLICT);
+                            }
+                            successForActor(actor, callback, saved);
+                        } catch (Reject rejected) {
+                            error(callback, rejected.error);
+                        }
+                    })
+                    .addOnFailureListener(e -> error(callback, firebaseError(e)));
+        }).addOnFailureListener(e -> {
+            IncidentRepository.Error readFailure = firebaseError(e);
+            error(callback, readFailure == IncidentRepository.Error.PERMISSION_DENIED ? fallback : readFailure);
+        });
+    }
+
+    private static boolean validAttemptId(String value) {
+        if (value == null) return false;
+        try {
+            return UUID.fromString(value).toString().equals(value);
+        } catch (IllegalArgumentException invalid) {
+            return false;
+        }
     }
 
     private void list(Actor actor, boolean mine,
@@ -246,15 +367,15 @@ public final class FirebaseIncidentRepository {
         }).addOnFailureListener(e -> error(callback, firebaseError(e)));
     }
 
-    private void getMine(Actor actor, String incidentId,
-                         IncidentRepository.Callback<IncidentSnapshot> callback) {
+    private void getIncident(Actor actor, String incidentId,
+                             IncidentRepository.Callback<IncidentSnapshot> callback) {
         final DocumentReference ref;
         try { ref = root(incidentId); }
         catch (IllegalArgumentException badId) { error(callback, IncidentRepository.Error.VALIDATION); return; }
         ref.get(Source.SERVER).addOnSuccessListener(doc -> {
             try {
                 IncidentSnapshot mapped = decode(doc);
-                if (!actor.uid.equals(mapped.getResidentId()))
+                if (actor.role == ActorRole.RESIDENT && !actor.uid.equals(mapped.getResidentId()))
                     throw new Reject(IncidentRepository.Error.PERMISSION_DENIED);
                 successForActor(actor, callback, mapped);
             } catch (Reject invalid) { error(callback, invalid.error); }
@@ -286,7 +407,7 @@ public final class FirebaseIncidentRepository {
     }
 
     private void transition(Actor actor, String incidentId, CommandPrecondition precondition,
-                            IncidentAction action, String handler,
+                            IncidentAction action, String handler, String note,
                             IncidentRepository.Callback<IncidentSnapshot> callback) {
         final DocumentReference parent;
         final DocumentReference eventRef;
@@ -338,7 +459,7 @@ public final class FirebaseIncidentRepository {
             if (action == IncidentAction.ASSIGN) update.put("assignedTo", cleanHandler);
             tx.update(parent, update);
             tx.set(eventRef, event(action.name(), current.getStatusCode(),
-                    decision.getNextStatus().name(), actor.uid, current.getRevision() + 1));
+                    decision.getNextStatus().name(), actor.uid, current.getRevision() + 1, note));
             return null;
         }).addOnSuccessListener(ignored -> readAfterCommit(actor, parent, callback))
                 .addOnFailureListener(e -> error(callback, firebaseError(e)));
@@ -347,8 +468,23 @@ public final class FirebaseIncidentRepository {
     private final class ResidentApi implements IncidentRepository.Resident {
         @Override public void create(NewIncidentInput input,
                                      IncidentRepository.Callback<IncidentSnapshot> callback) {
-            if (input == null) { error(callback, IncidentRepository.Error.VALIDATION); return; }
-            withActor(ActorRole.RESIDENT, callback, actor -> createIncident(actor, input, callback));
+            create(input, UUID.randomUUID().toString(), callback);
+        }
+
+        @Override public void create(NewIncidentInput input, String attemptId,
+                                     IncidentRepository.Callback<IncidentSnapshot> callback) {
+            if (input == null || !validAttemptId(attemptId)) {
+                error(callback, IncidentRepository.Error.VALIDATION);
+                return;
+            }
+            withActor(ActorRole.RESIDENT, callback, actor -> createIncident(actor, input, attemptId, callback));
+        }
+
+        @Override public void reconcileCreate(String attemptId,
+                                              IncidentRepository.Callback<IncidentSnapshot> callback) {
+            if (!validAttemptId(attemptId)) { error(callback, IncidentRepository.Error.VALIDATION); return; }
+            withActor(ActorRole.RESIDENT, callback, actor -> FirebaseIncidentRepository.this.reconcileCreate(
+                    actor, attemptId, null, IncidentRepository.Error.NOT_FOUND, callback));
         }
 
         @Override public void listMine(IncidentRepository.Callback<List<IncidentSnapshot>> callback) {
@@ -356,7 +492,7 @@ public final class FirebaseIncidentRepository {
         }
 
         @Override public void getMine(String id, IncidentRepository.Callback<IncidentSnapshot> callback) {
-            withActor(ActorRole.RESIDENT, callback, actor -> FirebaseIncidentRepository.this.getMine(actor, id, callback));
+            withActor(ActorRole.RESIDENT, callback, actor -> getIncident(actor, id, callback));
         }
 
         @Override public void historyMine(String id,
@@ -366,13 +502,27 @@ public final class FirebaseIncidentRepository {
 
         @Override public void confirm(String id, CommandPrecondition expected, boolean resolved,
                                       IncidentRepository.Callback<IncidentSnapshot> callback) {
+            confirm(id, expected, resolved, null, callback);
+        }
+
+        @Override public void confirm(String id, CommandPrecondition expected, boolean resolved, String note,
+                                      IncidentRepository.Callback<IncidentSnapshot> callback) {
+            final String trimmed = note == null ? "" : note.trim();
+            if ((!trimmed.isEmpty() && resolved) || trimmed.codePointCount(0, trimmed.length()) > 500) {
+                error(callback, IncidentRepository.Error.VALIDATION);
+                return;
+            }
             withActor(ActorRole.RESIDENT, callback, actor -> transition(actor, id, expected,
                     resolved ? IncidentAction.CONFIRM_RESOLVED : IncidentAction.REPORT_UNRESOLVED,
-                    null, callback));
+                    null, trimmed.isEmpty() ? null : trimmed, callback));
         }
     }
 
     private final class ManagerApi implements IncidentRepository.Manager {
+        @Override public void get(String id, IncidentRepository.Callback<IncidentSnapshot> callback) {
+            withActor(ActorRole.MANAGER, callback, actor -> getIncident(actor, id, callback));
+        }
+
         @Override public void listAll(IncidentRepository.Callback<List<IncidentSnapshot>> callback) {
             withActor(ActorRole.MANAGER, callback, actor -> list(actor, false, callback));
         }
@@ -380,19 +530,19 @@ public final class FirebaseIncidentRepository {
         @Override public void assign(String id, CommandPrecondition expected, String handler,
                                      IncidentRepository.Callback<IncidentSnapshot> callback) {
             withActor(ActorRole.MANAGER, callback,
-                    actor -> transition(actor, id, expected, IncidentAction.ASSIGN, handler, callback));
+                    actor -> transition(actor, id, expected, IncidentAction.ASSIGN, handler, null, callback));
         }
 
         @Override public void start(String id, CommandPrecondition expected,
                                     IncidentRepository.Callback<IncidentSnapshot> callback) {
             withActor(ActorRole.MANAGER, callback,
-                    actor -> transition(actor, id, expected, IncidentAction.START_WORK, null, callback));
+                    actor -> transition(actor, id, expected, IncidentAction.START_WORK, null, null, callback));
         }
 
         @Override public void complete(String id, CommandPrecondition expected,
                                        IncidentRepository.Callback<IncidentSnapshot> callback) {
             withActor(ActorRole.MANAGER, callback,
-                    actor -> transition(actor, id, expected, IncidentAction.MARK_COMPLETE, null, callback));
+                    actor -> transition(actor, id, expected, IncidentAction.MARK_COMPLETE, null, null, callback));
         }
     }
 }
