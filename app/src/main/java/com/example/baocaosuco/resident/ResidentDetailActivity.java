@@ -66,7 +66,8 @@ public class ResidentDetailActivity extends AppCompatActivity implements Residen
         retry = findViewById(R.id.incident_retry);
         timeline = findViewById(R.id.rv_timeline_events);
         timeline.setLayoutManager(new LinearLayoutManager(this));
-        timeline.setNestedScrollingEnabled(false);
+        // Let the timeline receive vertical gestures when its surrounding ScrollView reaches the end.
+        timeline.setNestedScrollingEnabled(true);
         findViewById(R.id.layout_static_steps).setVisibility(View.GONE);
         findViewById(R.id.layout_timeline_events).setVisibility(View.GONE);
         findViewById(R.id.card_incident_summary).setVisibility(View.GONE);
